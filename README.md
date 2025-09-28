@@ -1,9 +1,9 @@
-# K-2SO Professional Controller v1.0.4
+# K-2SO Animatronic Sketch v1.0.4
 **Advanced ESP32-S3 based animatronics controller for Star Wars K-2SO droid builds**
 
 ## 🤖 Project Overview
 
-This professional-grade animatronics controller brings your K-2SO droid to life with film-accurate behaviors, advanced servo control, dynamic lighting, high-quality audio, and multiple control interfaces. 
+This animatronics controller brings your K-2SO droid to life with film-accurate behaviors, advanced servo control, dynamic lighting, high-quality audio, and multiple control interfaces. 
 Designed for builders who demand professional results.
 
 ### Key Features

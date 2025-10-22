@@ -19,7 +19,7 @@
 
 // Hardware configuration
 #define DETAIL_LED_PIN          10      // GP10 - WS2812 strip
-#define MAX_DETAIL_LEDS         13      // Maximum LEDs (for 13-LED eye version)
+#define MAX_DETAIL_LEDS         8       // Maximum LEDs (8-LED strip)
 #define DEFAULT_DETAIL_COUNT    5       // Default active LEDs
 #define DEFAULT_DETAIL_BRIGHTNESS 150   // Default brightness (0-255)
 
@@ -35,14 +35,8 @@ enum DetailPattern {
   DETAIL_PATTERN_RANDOM     // Random flickering
 };
 
-//========================================
-// EYE VERSION CONFIGURATION
-//========================================
-
-enum DetailEyeVersion {
-  DETAIL_EYE_STRIP,         // 8-LED strip version (standard)
-  DETAIL_EYE_CIRCLE         // 13-LED circle version (12 ring + 1 center)
-};
+// Note: Eye version configuration removed - detail LEDs only support strip mode (1-8 LEDs)
+// Main eye version configuration is in animations.h/config.h
 
 //========================================
 // ANIMATION TIMING CONSTANTS
@@ -63,9 +57,8 @@ enum DetailEyeVersion {
 // Detail LED configuration and state
 struct DetailLEDState {
   // Hardware configuration
-  uint8_t activeCount;              // Number of active LEDs (1-13)
+  uint8_t activeCount;              // Number of active LEDs (1-8)
   uint8_t brightness;               // Brightness (0-255)
-  DetailEyeVersion eyeVersion;      // Eye version (strip or circle)
 
   // Color control
   uint8_t red;                      // Red component (0-255)
@@ -122,11 +115,10 @@ void updateDetailLEDs();                               // Main update loop (call
 void resetDetailLEDs();                                // Reset to default state
 
 // Configuration functions
-void setDetailCount(uint8_t count);                    // Set number of active LEDs (1-13)
+void setDetailCount(uint8_t count);                    // Set number of active LEDs (1-8)
 void setDetailBrightness(uint8_t brightness);          // Set brightness (0-255)
 void setDetailColor(uint8_t r, uint8_t g, uint8_t b); // Set RGB color
 void setDetailPattern(DetailPattern pattern);          // Set animation pattern
-void setDetailEyeVersion(DetailEyeVersion version);    // Set eye version (strip/circle)
 void setDetailEnabled(bool enabled);                   // Enable/disable detail LEDs
 void setDetailAutoColorMode(bool enabled);             // Enable/disable auto color mode
 
@@ -156,14 +148,12 @@ void detailLedsOn();                                   // Turn on all detail LED
 void setDetailLED(uint8_t index, uint8_t r, uint8_t g, uint8_t b); // Set individual LED
 void showDetailLEDs();                                 // Update LED strip (calls show())
 String getDetailPatternName();                         // Get current pattern name as string
-String getDetailEyeVersionName();                      // Get eye version name as string
 
 // Status and information
 void printDetailLEDStatus();                           // Print current status to Serial
 bool isDetailLEDEnabled();                             // Check if enabled
 uint8_t getDetailCount();                              // Get active LED count
 DetailPattern getDetailPattern();                      // Get current pattern
-DetailEyeVersion getDetailEyeVersion();                // Get current eye version
 
 // Preset configurations
 void setDetailDefaultRed();                            // Set to default red blinking

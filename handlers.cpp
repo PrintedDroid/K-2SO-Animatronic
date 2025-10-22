@@ -1107,6 +1107,9 @@ void handleLEDCommand(String params) {
     Serial.println("  led brightness [0-255]       - Set eye brightness");
     Serial.println("  led color [r] [g] [b]        - Set eye color (0-255 each)");
     Serial.println("  led mode [solid/flicker/pulse] - Set animation mode");
+    Serial.println("  led eye [7led/13led]         - Set eye hardware version");
+    Serial.println("    7led:  7-LED version (LEDs 0-6)");
+    Serial.println("    13led: 13-LED version (LED 0=center, 1-12=ring) - DEFAULT");
     Serial.println("  led test [left/right/both]  - Test LEDs");
     Serial.println("  led show                     - Show current settings");
     Serial.println("  led status [on/off]          - Enable/disable status LED");
@@ -1130,12 +1133,14 @@ void handleLEDCommand(String params) {
   
   if (args[0] == "show") {
     Serial.println("\n=== LED SETTINGS ===");
+    Serial.printf("Eye Hardware Version: %s\n", getEyeHardwareVersionName().c_str());
+    Serial.printf("Active LEDs per Eye: %d\n", getActiveEyeLEDCount());
     Serial.printf("Eye Brightness: %d/255\n", currentBrightness);
     Serial.printf("Current mode: %s\n", getAnimationModeName().c_str());
     Serial.printf("Left eye color: 0x%06lX\n", (unsigned long)leftEyeCurrentColor);
     Serial.printf("Right eye color: 0x%06lX\n", (unsigned long)rightEyeCurrentColor);
-    Serial.printf("Status LED: %s (Brightness: %d)\n", 
-                  config.statusLedEnabled ? "Enabled" : "Disabled", 
+    Serial.printf("Status LED: %s (Brightness: %d)\n",
+                  config.statusLedEnabled ? "Enabled" : "Disabled",
                   config.statusLedBrightness);
     Serial.printf("Status LED State: %s\n", getStatusLEDStateName(getCurrentStatusLEDState()).c_str());
   }
@@ -1157,7 +1162,7 @@ void handleLEDCommand(String params) {
   else if (args[0] == "mode" && argCount >= 2) {
     String mode = args[1];
     mode.toLowerCase();
-    
+
     if (mode == "solid") {
       currentPixelMode = SOLID_COLOR;
       stopAllAnimations();
@@ -1170,6 +1175,18 @@ void handleLEDCommand(String params) {
       Serial.println("Mode set to pulse");
     } else {
       Serial.println("Invalid mode. Use: solid, flicker, or pulse");
+    }
+  }
+  else if (args[0] == "eye" && argCount >= 2) {
+    String eyeVersion = args[1];
+    eyeVersion.toLowerCase();
+
+    if (eyeVersion == "7led") {
+      setEyeHardwareVersion(EYE_VERSION_7LED);
+    } else if (eyeVersion == "13led") {
+      setEyeHardwareVersion(EYE_VERSION_13LED);
+    } else {
+      Serial.println("Invalid eye version. Use: 7led or 13led");
     }
   }
   else if (args[0] == "status" && argCount >= 2) {
@@ -1230,16 +1247,13 @@ void handleDetailCommand(String params) {
   if (params.length() == 0) {
     Serial.println("\n=== Detail LED Commands ===");
     Serial.println("  detail show                     - Show current settings");
-    Serial.println("  detail count [1-13]             - Set number of active LEDs");
+    Serial.println("  detail count [1-8]              - Set number of active LEDs (default: 5)");
     Serial.println("  detail brightness [0-255]       - Set brightness");
     Serial.println("  detail color [r] [g] [b]        - Set RGB color (0-255 each)");
     Serial.println("  detail pattern [name]           - Set animation pattern");
     Serial.println("    Patterns: blink, fade, chase, pulse, random");
     Serial.println("  detail on                       - Enable detail LEDs");
     Serial.println("  detail off                      - Disable detail LEDs");
-    Serial.println("  detail eye [strip/circle]       - Set eye version");
-    Serial.println("    strip: 8-LED strip (default)");
-    Serial.println("    circle: 13-LED circle (12 ring + 1 center)");
     Serial.println("  detail auto [on/off]            - Auto color based on mode");
     Serial.println("  detail test                     - Run test sequence");
     Serial.println("===========================\n");
@@ -1299,18 +1313,6 @@ void handleDetailCommand(String params) {
   }
   else if (args[0] == "off") {
     setDetailEnabled(false);
-  }
-  else if (args[0] == "eye" && argCount >= 2) {
-    String eyeType = args[1];
-    eyeType.toLowerCase();
-
-    if (eyeType == "strip") {
-      setDetailEyeVersion(DETAIL_EYE_STRIP);
-    } else if (eyeType == "circle") {
-      setDetailEyeVersion(DETAIL_EYE_CIRCLE);
-    } else {
-      Serial.println("Invalid eye version. Use: strip or circle");
-    }
   }
   else if (args[0] == "auto" && argCount >= 2) {
     String autoMode = args[1];
@@ -2221,8 +2223,9 @@ void loadConfiguration() {
     // Default LED settings
     config.eyeBrightness = DEFAULT_BRIGHTNESS;
     config.ledEffectSpeed = 50;
-    
-    // NEW: Default status LED settings
+    config.eyeVersion = EYE_VERSION_13LED;  // Default to 13-LED eyes
+
+    // Default status LED settings
     config.statusLedBrightness = STATUS_LED_BRIGHTNESS;
     config.statusLedEnabled = true;
     
@@ -2302,8 +2305,11 @@ void applyConfiguration() {
   
   currentBrightness = config.eyeBrightness;
   setEyeBrightness(currentBrightness);
-  
-  // NEW: Apply status LED configuration
+
+  // Apply eye hardware version
+  updateEyeLEDCount();
+
+  // Apply status LED configuration
   setStatusLEDConfig(config.statusLedBrightness, config.statusLedEnabled);
   
   if (isAudioReady) {

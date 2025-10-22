@@ -28,7 +28,9 @@
 // NeoPixel Eye LEDs
 #define LEFT_EYE_PIN        3       // GP3 - Left eye NeoPixel
 #define RIGHT_EYE_PIN       4       // GP4 - Right eye NeoPixel
-#define NUM_EYE_PIXELS      7       // Number of pixels per eye
+#define NUM_EYE_PIXELS      13      // Number of pixels per eye (default: 13 LEDs)
+                                    // 13-LED version: LED 0 = center, LEDs 1-12 = ring
+                                    // 7-LED version: LEDs 0-6 (selectable via command)
 
 // Servo Control Pins
 #define EYE_PAN_PIN         5       // GP5 - Eye pan servo
@@ -41,7 +43,7 @@
 
 // Detail LEDs - WS2812 Strip (UPDATED)
 // Changed from 2 individual LEDs (GP10 + GP13) to WS2812 strip on GP10
-// Supports 1-13 LEDs: 8-LED strip version or 13-LED circle version (12 ring + 1 center)
+// Supports 1-8 LEDs, default 5 LEDs
 #define DETAIL_LED_PIN      10      // GP10 - WS2812 Detail LED strip
 // Note: GP13 is now free for future use
 
@@ -112,6 +114,14 @@ enum PersonalityMode {
   MODE_SCANNING,    // Slow, methodical observation behavior
   MODE_ALERT,       // Fast, reactive behavior
   MODE_IDLE         // Minimal movement, power saving
+};
+
+//========================================
+// EYE HARDWARE CONFIGURATION
+//========================================
+enum EyeHardwareVersion {
+  EYE_VERSION_7LED,     // 7-LED version (LEDs 0-6)
+  EYE_VERSION_13LED     // 13-LED version (LED 0 = center, LEDs 1-12 = ring) - DEFAULT
 };
 
 //========================================
@@ -253,8 +263,9 @@ struct ConfigData {
   // LED configuration
   uint8_t eyeBrightness;
   uint8_t ledEffectSpeed;
-  
-  // Status LED configuration (NEW)
+  EyeHardwareVersion eyeVersion;  // Eye hardware version (7 or 13 LEDs)
+
+  // Status LED configuration
   uint8_t statusLedBrightness;
   bool statusLedEnabled;
   

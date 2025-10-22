@@ -92,12 +92,20 @@ void setEyeColor(uint32_t leftColor, uint32_t rightColor) {
   rightEyeCurrentColor = rightColor;
   animState.baseColorLeft = leftColor;
   animState.baseColorRight = rightColor;
-  
-  leftEye.fill(leftColor);
-  rightEye.fill(rightColor);
+
+  // Clear all LEDs first
+  leftEye.clear();
+  rightEye.clear();
+
+  // Set only active LEDs based on eye version
+  for (int i = 0; i < activeEyeLEDCount; i++) {
+    leftEye.setPixelColor(i, leftColor);
+    rightEye.setPixelColor(i, rightColor);
+  }
+
   leftEye.show();
   rightEye.show();
-  
+
   currentPixelMode = SOLID_COLOR;
   animState.animationActive = false;
 }
@@ -555,4 +563,55 @@ uint32_t getScanningGreen() {
 
 uint32_t getIdleAmber() {
   return makeColor(255, 150, 0); // Warm amber for idle state
+}
+
+//========================================
+// EYE HARDWARE VERSION FUNCTIONS
+//========================================
+
+void setEyeHardwareVersion(EyeHardwareVersion version) {
+  config.eyeVersion = version;
+  updateEyeLEDCount();
+
+  Serial.printf("Eye hardware version set to: %s\n", getEyeHardwareVersionName().c_str());
+  Serial.printf("Active LEDs per eye: %d\n", activeEyeLEDCount);
+
+  // Clear eyes and restart animation
+  leftEye.clear();
+  rightEye.clear();
+  leftEye.show();
+  rightEye.show();
+}
+
+EyeHardwareVersion getEyeHardwareVersion() {
+  return config.eyeVersion;
+}
+
+uint8_t getActiveEyeLEDCount() {
+  return activeEyeLEDCount;
+}
+
+String getEyeHardwareVersionName() {
+  switch (config.eyeVersion) {
+    case EYE_VERSION_7LED:
+      return "7-LED (LEDs 0-6)";
+    case EYE_VERSION_13LED:
+      return "13-LED (LED 0=center, LEDs 1-12=ring)";
+    default:
+      return "Unknown";
+  }
+}
+
+void updateEyeLEDCount() {
+  switch (config.eyeVersion) {
+    case EYE_VERSION_7LED:
+      activeEyeLEDCount = 7;
+      break;
+    case EYE_VERSION_13LED:
+      activeEyeLEDCount = 13;
+      break;
+    default:
+      activeEyeLEDCount = 13; // Default to 13
+      break;
+  }
 }

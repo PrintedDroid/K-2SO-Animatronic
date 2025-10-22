@@ -11,7 +11,7 @@
 // HARDWARE OBJECT DEFINITION
 //========================================
 
-// Define the NeoPixel strip object
+// Define the NeoPixel strip object (max 8 LEDs)
 Adafruit_NeoPixel detailLEDs = Adafruit_NeoPixel(MAX_DETAIL_LEDS, DETAIL_LED_PIN, NEO_GRB + NEO_KHZ800);
 
 //========================================
@@ -41,7 +41,6 @@ void initializeDetailLEDs() {
   // Set default configuration
   detailState.activeCount = DEFAULT_DETAIL_COUNT;
   detailState.brightness = DEFAULT_DETAIL_BRIGHTNESS;
-  detailState.eyeVersion = DETAIL_EYE_STRIP;
 
   // Set default color (red)
   detailState.red = 255;
@@ -63,8 +62,7 @@ void initializeDetailLEDs() {
   detailLEDs.setBrightness(detailState.brightness);
 
   Serial.println("- Detail LEDs: OK (WS2812 Strip)");
-  Serial.printf("  Active LEDs: %d\n", detailState.activeCount);
-  Serial.printf("  Eye Version: %s\n", getDetailEyeVersionName().c_str());
+  Serial.printf("  Active LEDs: %d/%d\n", detailState.activeCount, MAX_DETAIL_LEDS);
   Serial.printf("  Pattern: %s\n", getDetailPatternName().c_str());
 }
 
@@ -180,26 +178,9 @@ void updateDetailChase() {
     // Clear all LEDs
     detailLEDs.clear();
 
-    // Handle different eye versions
-    if (detailState.eyeVersion == DETAIL_EYE_CIRCLE && detailState.activeCount == 13) {
-      // For 13-LED circle version: LED 0 is center, LEDs 1-12 are ring
-      // Light up the current position in the ring
-      int ringPos = detailState.animationStep % 12;
-      int ledIndex = ringPos + 1;  // Ring starts at LED 1
-
-      detailLEDs.setPixelColor(ledIndex, detailLEDs.Color(detailState.red, detailState.green, detailState.blue));
-
-      // Keep center LED on at lower brightness
-      uint8_t centerR = detailState.red / 4;
-      uint8_t centerG = detailState.green / 4;
-      uint8_t centerB = detailState.blue / 4;
-      detailLEDs.setPixelColor(0, detailLEDs.Color(centerR, centerG, centerB));
-
-    } else {
-      // For strip version or other counts
-      int ledIndex = detailState.animationStep % detailState.activeCount;
-      detailLEDs.setPixelColor(ledIndex, detailLEDs.Color(detailState.red, detailState.green, detailState.blue));
-    }
+    // For strip version: chase along the strip
+    int ledIndex = detailState.animationStep % detailState.activeCount;
+    detailLEDs.setPixelColor(ledIndex, detailLEDs.Color(detailState.red, detailState.green, detailState.blue));
 
     detailState.animationStep++;
     detailLEDs.show();
@@ -273,7 +254,7 @@ void setDetailCount(uint8_t count) {
     detailLEDs.show();
     detailState.animationStep = 0;
 
-    Serial.printf("Detail LED count set to: %d\n", count);
+    Serial.printf("Detail LED count set to: %d/%d\n", count, MAX_DETAIL_LEDS);
   } else {
     Serial.printf("Error: LED count must be between 1 and %d\n", MAX_DETAIL_LEDS);
   }
@@ -304,24 +285,6 @@ void setDetailPattern(DetailPattern pattern) {
   detailLEDs.show();
 
   Serial.printf("Detail LED pattern set to: %s\n", getDetailPatternName().c_str());
-}
-
-void setDetailEyeVersion(DetailEyeVersion version) {
-  detailState.eyeVersion = version;
-
-  // Adjust active count based on eye version
-  if (version == DETAIL_EYE_CIRCLE) {
-    detailState.activeCount = 13;  // 12 ring + 1 center
-    Serial.println("Detail LED eye version: Circle (13 LEDs: 12 ring + 1 center)");
-  } else {
-    detailState.activeCount = DEFAULT_DETAIL_COUNT;  // Default to 5 for strip
-    Serial.println("Detail LED eye version: Strip");
-  }
-
-  // Clear and restart
-  detailLEDs.clear();
-  detailLEDs.show();
-  detailState.animationStep = 0;
 }
 
 void setDetailEnabled(bool enabled) {
@@ -450,20 +413,11 @@ String getDetailPatternName() {
   }
 }
 
-String getDetailEyeVersionName() {
-  switch (detailState.eyeVersion) {
-    case DETAIL_EYE_STRIP: return "Strip (8 LEDs)";
-    case DETAIL_EYE_CIRCLE: return "Circle (13 LEDs: 12 ring + 1 center)";
-    default: return "Unknown";
-  }
-}
-
 void printDetailLEDStatus() {
   Serial.println("\n=== Detail LED Status ===");
   Serial.printf("Status: %s\n", detailState.enabled ? "Enabled" : "Disabled");
-  Serial.printf("Eye Version: %s\n", getDetailEyeVersionName().c_str());
-  Serial.printf("Active LEDs: %d\n", detailState.activeCount);
-  Serial.printf("Brightness: %d\n", detailState.brightness);
+  Serial.printf("Active LEDs: %d/%d\n", detailState.activeCount, MAX_DETAIL_LEDS);
+  Serial.printf("Brightness: %d/255\n", detailState.brightness);
   Serial.printf("Color: RGB(%d, %d, %d)\n", detailState.red, detailState.green, detailState.blue);
   Serial.printf("Pattern: %s\n", getDetailPatternName().c_str());
   Serial.printf("Auto Color Mode: %s\n", detailState.autoColorMode ? "Enabled" : "Disabled");
@@ -480,10 +434,6 @@ uint8_t getDetailCount() {
 
 DetailPattern getDetailPattern() {
   return detailState.pattern;
-}
-
-DetailEyeVersion getDetailEyeVersion() {
-  return detailState.eyeVersion;
 }
 
 //========================================

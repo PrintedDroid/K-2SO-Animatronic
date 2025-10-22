@@ -255,6 +255,7 @@ uint32_t leftEyeCurrentColor = 0;
 uint32_t rightEyeCurrentColor = 0;
 uint8_t currentBrightness = DEFAULT_BRIGHTNESS;
 PixelMode currentPixelMode = SOLID_COLOR;
+uint8_t activeEyeLEDCount = 13;  // Active LED count based on eye version (default 13)
 bool isAudioReady = false;
 bool isWaitingForNextTrack = false;
 unsigned long nextPlayTime = 0;

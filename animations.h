@@ -163,4 +163,11 @@ uint32_t getAlertRed();                                // Get alert red color
 uint32_t getScanningGreen();                           // Get scanning green color
 uint32_t getIdleAmber();                               // Get idle amber color
 
+// Eye hardware configuration functions
+void setEyeHardwareVersion(EyeHardwareVersion version); // Set eye hardware version (7 or 13 LEDs)
+EyeHardwareVersion getEyeHardwareVersion();            // Get current eye hardware version
+uint8_t getActiveEyeLEDCount();                        // Get active LED count based on version
+String getEyeHardwareVersionName();                    // Get version name as string
+void updateEyeLEDCount();                              // Update active LED count based on config
+
 #endif // K2SO_ANIMATIONS_H

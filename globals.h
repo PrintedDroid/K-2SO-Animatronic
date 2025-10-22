@@ -75,6 +75,7 @@ extern uint32_t leftEyeCurrentColor;
 extern uint32_t rightEyeCurrentColor;
 extern uint8_t currentBrightness;
 extern PixelMode currentPixelMode;
+extern uint8_t activeEyeLEDCount;  // Active LED count based on eye version
 
 //========================================
 // STATUS LED VARIABLES (NEW)

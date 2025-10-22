@@ -30,7 +30,8 @@ class Mp3Notify;
 // NeoPixel objects
 extern Adafruit_NeoPixel leftEye;
 extern Adafruit_NeoPixel rightEye;
-extern Adafruit_NeoPixel statusLED;  // NEW: Status LED
+extern Adafruit_NeoPixel statusLED;  // Status LED
+extern Adafruit_NeoPixel detailLEDs; // Detail LED strip (WS2812)
 
 // Web server
 extern WebServer server;
@@ -139,13 +140,27 @@ extern ServoState headPan;
 extern ServoState headTilt;
 
 //========================================
-// DETAIL LED SYSTEM
+// DETAIL LED SYSTEM (LEGACY - DEPRECATED)
+// Note: Old system with simple GPIO LEDs is deprecated
+// See detailleds.h for new WS2812 strip system
 //========================================
 
-extern DetailBlinker blinkers[DETAIL_LED_COUNT];
+extern DetailBlinker blinkers[2];  // Legacy: kept for compatibility
 
-// Detail LED pin array (constant)
-extern const uint8_t DETAIL_LED_PINS[DETAIL_LED_COUNT];
+// Detail LED pin array (constant) - LEGACY
+extern const uint8_t DETAIL_LED_PINS[2];
+
+//========================================
+// NEW DETAIL LED SYSTEM (WS2812)
+// Full declarations in detailleds.h
+//========================================
+
+// Forward declarations for new detail LED system
+struct DetailLEDState;
+struct DetailModeColors;
+
+extern DetailLEDState detailState;
+extern DetailModeColors detailModeColors;
 
 //========================================
 // IR REMOTE CONSTANTS

@@ -21,12 +21,13 @@
 #include <DFMiniMp3.h>
 
 // Custom headers AFTER system libraries
-#include "config.h"       
-#include "handlers.h"     
-#include "animations.h"   
-#include "statusled.h"    // NEW: Status LED functions
-#include "webpage.h"      
-#include "globals.h"      
+#include "config.h"
+#include "handlers.h"
+#include "animations.h"
+#include "statusled.h"    // Status LED functions
+#include "detailleds.h"   // Detail LED functions (WS2812)
+#include "webpage.h"
+#include "globals.h"
 #include "Mp3Notify.h"    
 
 // Forward declaration to access mp3 object from main .ino
@@ -253,19 +254,20 @@ void handleWebMode() {
     
     if (mode == "scanning") {
       currentMode = MODE_SCANNING;
-      statusLEDScanningMode(); // NEW: Update status LED
+      statusLEDScanningMode(); // Update status LED
     } else if (mode == "alert") {
       currentMode = MODE_ALERT;
-      statusLEDAlertMode(); // NEW: Update status LED
+      statusLEDAlertMode(); // Update status LED
     } else if (mode == "idle") {
       currentMode = MODE_IDLE;
-      statusLEDIdleMode(); // NEW: Update status LED
+      statusLEDIdleMode(); // Update status LED
     } else {
       server.send(400, "text/plain", "Invalid mode");
       return;
     }
-    
+
     setServoParameters();
+    updateDetailColorForMode(currentMode); // NEW: Update detail LEDs for mode
     config.savedMode = currentMode;
     
     if (!isAwake) {
@@ -326,7 +328,8 @@ Command parseCommand(String cmd) {
   if (cmd == "ir on") return CMD_IR_ON;
   if (cmd == "ir off") return CMD_IR_OFF;
   if (cmd == "mode") return CMD_MODE;
-  
+  if (cmd == "detail") return CMD_DETAIL;
+
   return CMD_UNKNOWN;
 }
 
@@ -470,21 +473,22 @@ void processCommand(String fullCommand) {
         params.toLowerCase();
         if (params == "scanning") {
           currentMode = MODE_SCANNING;
-          statusLEDScanningMode(); // NEW: Update status LED
+          statusLEDScanningMode(); // Update status LED
           Serial.println("Mode set to SCANNING");
         } else if (params == "alert") {
           currentMode = MODE_ALERT;
-          statusLEDAlertMode(); // NEW: Update status LED
+          statusLEDAlertMode(); // Update status LED
           Serial.println("Mode set to ALERT");
         } else if (params == "idle") {
           currentMode = MODE_IDLE;
-          statusLEDIdleMode(); // NEW: Update status LED
+          statusLEDIdleMode(); // Update status LED
           Serial.println("Mode set to IDLE");
         } else {
           Serial.println("Invalid mode. Use: scanning, alert, or idle");
           break;
         }
         setServoParameters();
+        updateDetailColorForMode(currentMode); // NEW: Update detail LEDs for mode
         config.savedMode = currentMode;
         if (!isAwake) {
           isAwake = true;
@@ -492,7 +496,11 @@ void processCommand(String fullCommand) {
         lastActivityTime = millis();
       }
       break;
-      
+
+    case CMD_DETAIL:
+      handleDetailCommand(params);
+      break;
+
     default:
       Serial.println("Unknown command. Type 'help' for available commands.");
       break;
@@ -1214,6 +1222,148 @@ void handleLEDCommand(String params) {
   }
 }
 
+//========================================
+// DETAIL LED COMMAND HANDLER (NEW - WS2812)
+//========================================
+
+void handleDetailCommand(String params) {
+  if (params.length() == 0) {
+    Serial.println("\n=== Detail LED Commands ===");
+    Serial.println("  detail show                     - Show current settings");
+    Serial.println("  detail count [1-13]             - Set number of active LEDs");
+    Serial.println("  detail brightness [0-255]       - Set brightness");
+    Serial.println("  detail color [r] [g] [b]        - Set RGB color (0-255 each)");
+    Serial.println("  detail pattern [name]           - Set animation pattern");
+    Serial.println("    Patterns: blink, fade, chase, pulse, random");
+    Serial.println("  detail on                       - Enable detail LEDs");
+    Serial.println("  detail off                      - Disable detail LEDs");
+    Serial.println("  detail eye [strip/circle]       - Set eye version");
+    Serial.println("    strip: 8-LED strip (default)");
+    Serial.println("    circle: 13-LED circle (12 ring + 1 center)");
+    Serial.println("  detail auto [on/off]            - Auto color based on mode");
+    Serial.println("  detail test                     - Run test sequence");
+    Serial.println("===========================\n");
+    return;
+  }
+
+  String args[4];
+  int argCount = 0;
+  int startIdx = 0;
+
+  for (int i = 0; i <= params.length() && argCount < 4; i++) {
+    if (i == params.length() || params[i] == ' ') {
+      if (i > startIdx) {
+        args[argCount++] = params.substring(startIdx, i);
+      }
+      startIdx = i + 1;
+    }
+  }
+
+  if (args[0] == "show") {
+    printDetailLEDStatus();
+  }
+  else if (args[0] == "count" && argCount >= 2) {
+    int count = args[1].toInt();
+    setDetailCount(count);
+  }
+  else if (args[0] == "brightness" && argCount >= 2) {
+    int brightness = constrain(args[1].toInt(), 0, 255);
+    setDetailBrightness(brightness);
+  }
+  else if (args[0] == "color" && argCount >= 4) {
+    int r = constrain(args[1].toInt(), 0, 255);
+    int g = constrain(args[2].toInt(), 0, 255);
+    int b = constrain(args[3].toInt(), 0, 255);
+    setDetailColor(r, g, b);
+  }
+  else if (args[0] == "pattern" && argCount >= 2) {
+    String pattern = args[1];
+    pattern.toLowerCase();
+
+    if (pattern == "blink") {
+      startDetailBlink();
+    } else if (pattern == "fade") {
+      startDetailFade();
+    } else if (pattern == "chase") {
+      startDetailChase();
+    } else if (pattern == "pulse") {
+      startDetailPulse();
+    } else if (pattern == "random") {
+      startDetailRandom();
+    } else {
+      Serial.println("Invalid pattern. Use: blink, fade, chase, pulse, or random");
+    }
+  }
+  else if (args[0] == "on") {
+    setDetailEnabled(true);
+  }
+  else if (args[0] == "off") {
+    setDetailEnabled(false);
+  }
+  else if (args[0] == "eye" && argCount >= 2) {
+    String eyeType = args[1];
+    eyeType.toLowerCase();
+
+    if (eyeType == "strip") {
+      setDetailEyeVersion(DETAIL_EYE_STRIP);
+    } else if (eyeType == "circle") {
+      setDetailEyeVersion(DETAIL_EYE_CIRCLE);
+    } else {
+      Serial.println("Invalid eye version. Use: strip or circle");
+    }
+  }
+  else if (args[0] == "auto" && argCount >= 2) {
+    String autoMode = args[1];
+    autoMode.toLowerCase();
+
+    if (autoMode == "on") {
+      setDetailAutoColorMode(true);
+    } else if (autoMode == "off") {
+      setDetailAutoColorMode(false);
+    } else {
+      Serial.println("Use: detail auto on/off");
+    }
+  }
+  else if (args[0] == "test") {
+    Serial.println("\n=== Detail LED Test Sequence ===");
+
+    // Test all patterns
+    Serial.println("Testing BLINK pattern (red)...");
+    setDetailColor(255, 0, 0);
+    startDetailBlink();
+    delay(2000);
+
+    Serial.println("Testing FADE pattern (green)...");
+    setDetailColor(0, 255, 0);
+    startDetailFade();
+    delay(2000);
+
+    Serial.println("Testing PULSE pattern (blue)...");
+    setDetailColor(0, 0, 255);
+    startDetailPulse();
+    delay(2000);
+
+    Serial.println("Testing CHASE pattern (yellow)...");
+    setDetailColor(255, 255, 0);
+    startDetailChase();
+    delay(2000);
+
+    Serial.println("Testing RANDOM pattern (purple)...");
+    setDetailColor(255, 0, 255);
+    startDetailRandom();
+    delay(2000);
+
+    // Return to default
+    Serial.println("Returning to default (red blink)...");
+    setDetailDefaultRed();
+
+    Serial.println("Detail LED test complete!\n");
+  }
+  else {
+    Serial.println("Invalid detail command. Type 'detail' for help.");
+  }
+}
+
 void handleTimingCommand(String params) {
   if (params.length() == 0) {
     Serial.println("Timing commands:");
@@ -1434,10 +1584,11 @@ void showHelp() {
   Serial.println("  ir on/off - Enable/disable IR receiver");
   
   Serial.println("\nHARDWARE CONFIGURATION:");
-  Serial.println("  servo [options] - Configure servo settings");
-  Serial.println("  led [options]   - Configure LED settings (eyes + status)");
-  Serial.println("  sound [options] - Configure audio settings");
-  Serial.println("  timing [options]- Configure movement timing");
+  Serial.println("  servo [options]  - Configure servo settings");
+  Serial.println("  led [options]    - Configure LED settings (eyes + status)");
+  Serial.println("  detail [options] - Configure detail LEDs (WS2812 strip)");
+  Serial.println("  sound [options]  - Configure audio settings");
+  Serial.println("  timing [options] - Configure movement timing");
   
   Serial.println("\nPROFILE MANAGEMENT:");
   Serial.println("  profile save [name]  - Save current settings as profile");

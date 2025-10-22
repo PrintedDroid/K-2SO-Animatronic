@@ -52,6 +52,7 @@ void processCommand(String fullCommand);
 // Specialized command handlers
 void handleServoCommand(String params);
 void handleLEDCommand(String params);
+void handleDetailCommand(String params);  // NEW: Detail LED control (WS2812)
 void handleSoundCommand(String params);
 void handleTimingCommand(String params);
 void handleProfileCommand(String params);

@@ -39,16 +39,15 @@
 // Sensor and Control
 #define IR_RECEIVER_PIN     9       // GP9 - IR receiver
 
-// Detail LEDs for random blinking
-#define DETAIL_LED_1_PIN    10      // GP10 - Detail LED 1
-#define DETAIL_LED_2_PIN    13      // GP13 - Detail LED 2
+// Detail LEDs - WS2812 Strip (UPDATED)
+// Changed from 2 individual LEDs (GP10 + GP13) to WS2812 strip on GP10
+// Supports 1-13 LEDs: 8-LED strip version or 13-LED circle version (12 ring + 1 center)
+#define DETAIL_LED_PIN      10      // GP10 - WS2812 Detail LED strip
+// Note: GP13 is now free for future use
 
 // Status LED (NEW)
 #define STATUS_LED_PIN      21      // GP21 - Single WS2812 status LED
 #define STATUS_LED_COUNT    1       // Single LED
-
-// Detail LED count
-#define DETAIL_LED_COUNT 2
 
 //========================================
 // WIFI CONFIGURATION - MUST BE CHANGED!
@@ -160,7 +159,8 @@ struct ServoState {
   bool isMoving;
 };
 
-// Detail LED blinker state
+// Legacy Detail LED blinker state (DEPRECATED - kept for compatibility)
+// Note: This is no longer used with WS2812 strips. See detailleds.h for new system.
 struct DetailBlinker {
   uint8_t pin;
   bool state;
@@ -288,7 +288,8 @@ enum Command {
   CMD_SERVO, CMD_LED, CMD_SOUND, CMD_TIMING,
   CMD_PROFILE, CMD_MONITOR, CMD_TEST,
   CMD_BACKUP, CMD_RESTORE, CMD_EXIT,
-  CMD_IR_ON, CMD_IR_OFF, CMD_MODE
+  CMD_IR_ON, CMD_IR_OFF, CMD_MODE,
+  CMD_DETAIL  // NEW: Detail LED control command
 };
 
 #endif // K2SO_CONFIG_H

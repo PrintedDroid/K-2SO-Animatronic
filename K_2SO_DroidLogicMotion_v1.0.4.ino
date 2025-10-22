@@ -207,7 +207,8 @@ USE OF THIS CODE CONSTITUTES ACCEPTANCE OF THESE TERMS.
 //========================================
 #include "config.h"       // Base configuration and structures
 #include "Mp3Notify.h"    // MP3 Notification class (needs DFMiniMp3.h)
-#include "statusled.h"    // Status LED control system (NEW)
+#include "statusled.h"    // Status LED control system
+#include "detailleds.h"   // Detail LED control system (WS2812)
 #include "animations.h"   // LED animations
 #include "webpage.h"      // Web interface
 #include "handlers.h"     // Command handlers
@@ -216,7 +217,8 @@ USE OF THIS CODE CONSTITUTES ACCEPTANCE OF THESE TERMS.
 //========================================
 // GLOBAL VARIABLE DEFINITIONS
 //========================================
-const uint8_t DETAIL_LED_PINS[DETAIL_LED_COUNT] = {DETAIL_LED_1_PIN, DETAIL_LED_2_PIN};
+// Legacy detail LED pins (DEPRECATED - kept for compatibility)
+const uint8_t DETAIL_LED_PINS[2] = {10, 13};
 const char* standard17Buttons[17] = {
   "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
   "*", "#", "UP", "DOWN", "LEFT", "RIGHT", "OK"
@@ -227,7 +229,8 @@ const char* standard17Buttons[17] = {
 //========================================
 Adafruit_NeoPixel leftEye(NUM_EYE_PIXELS, LEFT_EYE_PIN, NEO_GRB + NEO_KHZ800);
 Adafruit_NeoPixel rightEye(NUM_EYE_PIXELS, RIGHT_EYE_PIN, NEO_GRB + NEO_KHZ800);
-Adafruit_NeoPixel statusLED(STATUS_LED_COUNT, STATUS_LED_PIN, NEO_GRB + NEO_KHZ800); // NEW
+Adafruit_NeoPixel statusLED(STATUS_LED_COUNT, STATUS_LED_PIN, NEO_GRB + NEO_KHZ800);
+// Note: detailLEDs NeoPixel object is defined in detailleds.cpp
 HardwareSerial dfSerial(2);
 DFMiniMp3<HardwareSerial, Mp3Notify> mp3(dfSerial);
 WebServer server(80);
@@ -273,7 +276,7 @@ ServoState eyePan;
 ServoState eyeTilt;
 ServoState headPan;
 ServoState headTilt;
-DetailBlinker blinkers[DETAIL_LED_COUNT];
+DetailBlinker blinkers[2];  // Legacy: kept for compatibility
 
 // Status LED variables (NEW)
 StatusLEDAnimation statusLEDAnim;
@@ -360,11 +363,11 @@ void loop() {
     case MODE_SETUP_WIZARD: break;
   }
 
-  updateDetailBlinkers(currentMillis);
+  updateDetailLEDs();       // NEW: Update detail LED animations (WS2812)
   handlePixelAnimations();
   updateSystemStats();
-  updateSystemStatus();     // NEW: Update status LED system
-  updateStatusLED();        // NEW: Handle status LED animations
+  updateSystemStatus();     // Update status LED system
+  updateStatusLED();        // Handle status LED animations
 
   if (!bootSequenceComplete) {
     handleBootSequence(currentMillis);
@@ -384,11 +387,11 @@ void initializeHardware() {
   rightEye.show();
   Serial.println("- NeoPixel LEDs: OK");
 
-  // Initialize Status LED (NEW)
+  // Initialize Status LED
   initializeStatusLED();
 
-  initializeDetailBlinkers();
-  Serial.println("- Detail LEDs: OK");
+  // Initialize Detail LEDs (WS2812 Strip)
+  initializeDetailLEDs();
 
   // IMPROVED: Audio System with better error handling
   Serial.println("Initializing DFPlayer...");
@@ -422,17 +425,11 @@ void initializeHardware() {
   initializeIR();
 }
 
+// Legacy function - kept for compatibility but no longer used
+// Detail LEDs now use WS2812 strip controlled by detailleds.cpp
 void initializeDetailBlinkers() {
-  for (int i = 0; i < DETAIL_LED_COUNT; i++) {
-    pinMode(DETAIL_LED_PINS[i], OUTPUT);
-    blinkers[i].pin = DETAIL_LED_PINS[i];
-    blinkers[i].state = LOW;
-    blinkers[i].minOnMs = 100;
-    blinkers[i].maxOnMs = 300;
-    blinkers[i].minOffMs = 2000;
-    blinkers[i].maxOffMs = 8000;
-    blinkers[i].nextMs = millis() + random(blinkers[i].minOffMs, blinkers[i].maxOffMs + 1);
-  }
+  // This function is deprecated and not called anymore
+  // WS2812 detail LEDs are initialized via initializeDetailLEDs() in detailleds.cpp
 }
 
 void initializeServos() {

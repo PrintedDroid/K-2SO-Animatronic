@@ -1,4 +1,4 @@
-# K-2SO Animatronic Sketch v1.0.4
+# K-2SO Animatronic Sketch
 **Advanced ESP32-S3 based animatronics controller for Star Wars K-2SO droid builds**
 
 ## 🤖 Project Overview

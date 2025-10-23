@@ -17,7 +17,7 @@
 // Page titles and branding
 #define WEB_TITLE               "K-2SO Controller"
 #define WEB_SUBTITLE            "Professional Droid Interface"
-#define WEB_VERSION             "v1.0"
+#define WEB_VERSION             "v1.1.0"
 
 // Default values for dynamic content
 #define DEFAULT_WEB_BRIGHTNESS  150
@@ -66,9 +66,10 @@ String getPageCSS();                                   // Get CSS styles
 String getPageJavaScript();                            // Get JavaScript code
 String getPageFooter();                                // Get HTML footer
 
-// Control section generators  
+// Control section generators
 String getServoControlSection();                       // Get servo gamepad HTML
 String getLEDControlSection();                         // Get LED control HTML
+String getDetailLEDControlSection();                   // Get Detail LED control HTML
 String getAudioControlSection();                       // Get audio control HTML
 String getModeControlSection();                        // Get mode selection HTML
 String getStatusSection();                             // Get status display HTML

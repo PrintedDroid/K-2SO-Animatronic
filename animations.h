@@ -60,7 +60,10 @@ struct AnimationState {
   unsigned long lastScannerUpdate;
   int scannerPosition;
   bool scannerDirection; // true = forward, false = reverse
-  
+
+  // Multi-purpose animation step counter
+  int animationStep;
+
   // General animation state
   bool animationActive;
   PixelMode currentMode;
@@ -118,11 +121,31 @@ void startPulseMode(uint32_t baseColor);               // Pulse with specific co
 void startScannerMode();                               // K-2SO scanner effect
 void startScannerMode(uint32_t scanColor);             // Scanner with specific color
 
+// Advanced animation modes (13-LED Circle eyes)
+void startIrisMode();                                  // Iris effect
+void startTargetingMode();                             // Targeting crosshair
+void startRingScannerMode();                           // Scanner in ring only
+void startSpiralMode();                                // Spiral animation
+void startFocusMode();                                 // Focus effect
+void startRadarMode();                                 // Radar sweep
+
+// Synchronized animation modes
+void startHeartbeatMode();                             // Heartbeat pulse (synchronized)
+void startAlarmMode();                                 // Alarm flash (synchronized)
+
 // Animation update functions (called by main handler)
 void updateFadeAnimation();                            // Update fade animation
-void updateFlickerAnimation();                         // Update flicker animation  
+void updateFlickerAnimation();                         // Update flicker animation
 void updatePulseAnimation();                           // Update pulse animation
 void updateScannerAnimation();                         // Update scanner animation
+void updateIrisAnimation();                            // Update iris animation
+void updateTargetingAnimation();                       // Update targeting animation
+void updateRingScannerAnimation();                     // Update ring scanner
+void updateSpiralAnimation();                          // Update spiral animation
+void updateFocusAnimation();                           // Update focus animation
+void updateRadarAnimation();                           // Update radar animation
+void updateHeartbeatAnimation();                       // Update heartbeat animation
+void updateAlarmAnimation();                           // Update alarm animation
 
 // Utility functions
 uint32_t interpolateColor(uint32_t startColor, uint32_t endColor, float progress);
@@ -162,5 +185,13 @@ uint32_t getK2SOBlue();                                // Get K-2SO signature bl
 uint32_t getAlertRed();                                // Get alert red color
 uint32_t getScanningGreen();                           // Get scanning green color
 uint32_t getIdleAmber();                               // Get idle amber color
+uint32_t getIceBlue();                                 // Get ice blue color
+
+// Eye hardware configuration functions
+void setEyeHardwareVersion(EyeHardwareVersion version); // Set eye hardware version (7 or 13 LEDs)
+EyeHardwareVersion getEyeHardwareVersion();            // Get current eye hardware version
+uint8_t getActiveEyeLEDCount();                        // Get active LED count based on version
+String getEyeHardwareVersionName();                    // Get version name as string
+void updateEyeLEDCount();                              // Update active LED count based on config
 
 #endif // K2SO_ANIMATIONS_H

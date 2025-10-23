@@ -10,6 +10,7 @@
 #include <math.h>         // System library
 #include "animations.h"   // DANN custom
 #include "config.h"
+#include "globals.h"      // For activeEyeLEDCount and other globals
 
 //========================================
 // GLOBAL ANIMATION STATE
@@ -68,7 +69,39 @@ void handlePixelAnimations() {
     case SCANNER:
       updateScannerAnimation();
       break;
-      
+
+    case IRIS:
+      updateIrisAnimation();
+      break;
+
+    case TARGETING:
+      updateTargetingAnimation();
+      break;
+
+    case RING_SCANNER:
+      updateRingScannerAnimation();
+      break;
+
+    case SPIRAL:
+      updateSpiralAnimation();
+      break;
+
+    case FOCUS:
+      updateFocusAnimation();
+      break;
+
+    case RADAR:
+      updateRadarAnimation();
+      break;
+
+    case HEARTBEAT:
+      updateHeartbeatAnimation();
+      break;
+
+    case ALARM:
+      updateAlarmAnimation();
+      break;
+
     default:
       Serial.println("Warning: Unknown animation mode");
       currentPixelMode = SOLID_COLOR;
@@ -92,12 +125,20 @@ void setEyeColor(uint32_t leftColor, uint32_t rightColor) {
   rightEyeCurrentColor = rightColor;
   animState.baseColorLeft = leftColor;
   animState.baseColorRight = rightColor;
-  
-  leftEye.fill(leftColor);
-  rightEye.fill(rightColor);
+
+  // Clear all LEDs first
+  leftEye.clear();
+  rightEye.clear();
+
+  // Set only active LEDs based on eye version
+  for (int i = 0; i < activeEyeLEDCount; i++) {
+    leftEye.setPixelColor(i, leftColor);
+    rightEye.setPixelColor(i, rightColor);
+  }
+
   leftEye.show();
   rightEye.show();
-  
+
   currentPixelMode = SOLID_COLOR;
   animState.animationActive = false;
 }
@@ -210,6 +251,130 @@ void startScannerMode(uint32_t scanColor) {
   animState.currentMode = SCANNER;
   
   Serial.println("Starting scanner animation");
+}
+
+//========================================
+// ADVANCED ANIMATION MODES (13-LED CIRCLE EYES)
+//========================================
+
+void startIrisMode() {
+  // Iris effect: Ring pulses while center stays static
+  animState.baseColorLeft = getK2SOBlue();
+  animState.baseColorRight = getK2SOBlue();
+  animState.pulseStartTime = millis();
+  animState.pulseDirection = true;
+
+  currentPixelMode = IRIS;
+  animState.animationActive = true;
+  animState.currentMode = IRIS;
+
+  Serial.println("Starting iris animation (13-LED only)");
+}
+
+void startTargetingMode() {
+  // Targeting: Ring rotates while center blinks
+  animState.baseColorLeft = getAlertRed();
+  animState.baseColorRight = getAlertRed();
+  animState.lastScannerUpdate = millis();
+  animState.scannerPosition = 0;
+  animState.lastFlickerUpdate = millis();
+
+  currentPixelMode = TARGETING;
+  animState.animationActive = true;
+  animState.currentMode = TARGETING;
+
+  Serial.println("Starting targeting animation (13-LED only)");
+}
+
+void startRingScannerMode() {
+  // Scanner only in ring (LEDs 1-12)
+  animState.baseColorLeft = getK2SOBlue();
+  animState.baseColorRight = getK2SOBlue();
+  animState.lastScannerUpdate = millis();
+  animState.scannerPosition = 1;  // Start at LED 1 (ring)
+  animState.scannerDirection = true;
+
+  currentPixelMode = RING_SCANNER;
+  animState.animationActive = true;
+  animState.currentMode = RING_SCANNER;
+
+  Serial.println("Starting ring scanner animation (13-LED only)");
+}
+
+void startSpiralMode() {
+  // Spiral from outside to inside
+  animState.baseColorLeft = getK2SOBlue();
+  animState.baseColorRight = getK2SOBlue();
+  animState.lastScannerUpdate = millis();
+  animState.scannerPosition = 0;
+  animState.scannerDirection = true;
+
+  currentPixelMode = SPIRAL;
+  animState.animationActive = true;
+  animState.currentMode = SPIRAL;
+
+  Serial.println("Starting spiral animation (13-LED only)");
+}
+
+void startFocusMode() {
+  // Ring blinks while center stays on
+  animState.baseColorLeft = getK2SOBlue();
+  animState.baseColorRight = getK2SOBlue();
+  animState.lastFlickerUpdate = millis();
+  animState.flickerIntensityLeft = 1.0;
+
+  currentPixelMode = FOCUS;
+  animState.animationActive = true;
+  animState.currentMode = FOCUS;
+
+  Serial.println("Starting focus animation (13-LED only)");
+}
+
+void startRadarMode() {
+  // Radar sweep effect in ring
+  animState.baseColorLeft = getScanningGreen();
+  animState.baseColorRight = getScanningGreen();
+  animState.lastScannerUpdate = millis();
+  animState.scannerPosition = 1;  // Start at LED 1 (ring)
+  animState.scannerDirection = true;
+
+  currentPixelMode = RADAR;
+  animState.animationActive = true;
+  animState.currentMode = RADAR;
+
+  Serial.println("Starting radar animation (13-LED only)");
+}
+
+//========================================
+// SYNCHRONIZED ANIMATION MODES
+//========================================
+
+void startHeartbeatMode() {
+  // Heartbeat pulse: synchronized double-pulse like a heartbeat
+  animState.baseColorLeft = getAlertRed();
+  animState.baseColorRight = getAlertRed();
+  animState.pulseStartTime = millis();
+  animState.animationStep = 0;
+
+  currentPixelMode = HEARTBEAT;
+  animState.animationActive = true;
+  animState.currentMode = HEARTBEAT;
+
+  Serial.println("Starting heartbeat animation (synchronized)");
+}
+
+void startAlarmMode() {
+  // Alarm flash: rapid synchronized red/white flashing
+  animState.baseColorLeft = getAlertRed();
+  animState.baseColorRight = getAlertRed();
+  animState.lastFlickerUpdate = millis();
+  animState.animationStep = 0;
+
+  currentPixelMode = ALARM;
+  animState.animationActive = true;
+  animState.currentMode = ALARM;
+
+  Serial.println("Starting alarm animation (synchronized)");
 }
 
 //========================================
@@ -365,6 +530,349 @@ void updateScannerAnimation() {
 }
 
 //========================================
+// ADVANCED ANIMATION UPDATE FUNCTIONS (13-LED CIRCLE EYES)
+//========================================
+
+void updateIrisAnimation() {
+  // Iris effect: Ring pulses while center stays static
+  // Only works with 13-LED eyes
+  if (activeEyeLEDCount != 13) {
+    Serial.println("Warning: Iris mode requires 13-LED eyes");
+    stopAllAnimations();
+    return;
+  }
+
+  unsigned long currentTime = millis();
+  unsigned long elapsed = currentTime - animState.pulseStartTime;
+
+  // Calculate pulse progress (0.0 to 1.0) within cycle
+  float cycleProgress = (float)(elapsed % PULSE_SPEED_MS) / (float)PULSE_SPEED_MS;
+
+  // Convert to sine wave for smooth pulsing
+  float sineValue = sin(cycleProgress * 2.0 * PI);
+
+  // Map sine wave to brightness range for ring
+  float ringBrightness = PULSE_MIN_BRIGHTNESS +
+                         (PULSE_MAX_BRIGHTNESS - PULSE_MIN_BRIGHTNESS) *
+                         (sineValue + 1.0) / 2.0;
+
+  // Clear both eyes
+  leftEye.clear();
+  rightEye.clear();
+
+  // Set center LED (LED 0) to full brightness
+  leftEye.setPixelColor(0, animState.baseColorLeft);
+  rightEye.setPixelColor(0, animState.baseColorRight);
+
+  // Set ring LEDs (1-12) with pulsing brightness
+  uint32_t pulseColor = adjustColorBrightness(animState.baseColorLeft, ringBrightness);
+  for (int i = 1; i <= 12; i++) {
+    leftEye.setPixelColor(i, pulseColor);
+    rightEye.setPixelColor(i, pulseColor);
+  }
+
+  leftEye.show();
+  rightEye.show();
+}
+
+void updateTargetingAnimation() {
+  // Targeting: Ring rotates while center blinks
+  // Only works with 13-LED eyes
+  if (activeEyeLEDCount != 13) {
+    Serial.println("Warning: Targeting mode requires 13-LED eyes");
+    stopAllAnimations();
+    return;
+  }
+
+  unsigned long currentTime = millis();
+
+  // Update ring rotation
+  if (currentTime - animState.lastScannerUpdate >= 100) {  // 100ms per step
+    animState.lastScannerUpdate = currentTime;
+
+    // Clear eyes
+    leftEye.clear();
+    rightEye.clear();
+
+    // Blink center LED (on/off every 500ms)
+    bool centerOn = (currentTime / 500) % 2 == 0;
+    if (centerOn) {
+      leftEye.setPixelColor(0, animState.baseColorLeft);
+      rightEye.setPixelColor(0, animState.baseColorRight);
+    }
+
+    // Draw 4 targeting crosshair points rotating around ring
+    for (int i = 0; i < 4; i++) {
+      int ledIndex = (animState.scannerPosition + (i * 3)) % 12 + 1;  // LEDs 1-12
+      leftEye.setPixelColor(ledIndex, animState.baseColorLeft);
+      rightEye.setPixelColor(ledIndex, animState.baseColorRight);
+    }
+
+    leftEye.show();
+    rightEye.show();
+
+    // Move scanner position
+    animState.scannerPosition = (animState.scannerPosition + 1) % 12;
+  }
+}
+
+void updateRingScannerAnimation() {
+  // Scanner only in ring (LEDs 1-12)
+  // Only works with 13-LED eyes
+  if (activeEyeLEDCount != 13) {
+    Serial.println("Warning: Ring scanner mode requires 13-LED eyes");
+    stopAllAnimations();
+    return;
+  }
+
+  unsigned long currentTime = millis();
+
+  if (currentTime - animState.lastScannerUpdate >= SCANNER_SPEED) {
+    animState.lastScannerUpdate = currentTime;
+
+    // Clear eyes
+    leftEye.clear();
+    rightEye.clear();
+
+    // Keep center LED on
+    leftEye.setPixelColor(0, animState.baseColorLeft);
+    rightEye.setPixelColor(0, animState.baseColorRight);
+
+    // Create scanner beam with tail in ring only
+    for (int i = 0; i < SCANNER_TAIL_LENGTH; i++) {
+      int pixelIndex = animState.scannerPosition - i;
+      if (pixelIndex < 1) pixelIndex += 12;  // Wrap within ring (1-12)
+
+      float intensity = 1.0 - (float)i / SCANNER_TAIL_LENGTH;
+      uint32_t scanColor = adjustColorBrightness(animState.baseColorLeft, intensity);
+
+      leftEye.setPixelColor(pixelIndex, scanColor);
+      rightEye.setPixelColor(pixelIndex, scanColor);
+    }
+
+    leftEye.show();
+    rightEye.show();
+
+    // Update scanner position (only in ring 1-12)
+    if (animState.scannerDirection) {
+      animState.scannerPosition++;
+      if (animState.scannerPosition > 12) {
+        animState.scannerPosition = 12;
+        animState.scannerDirection = false;
+      }
+    } else {
+      animState.scannerPosition--;
+      if (animState.scannerPosition < 1) {
+        animState.scannerPosition = 1;
+        animState.scannerDirection = true;
+      }
+    }
+  }
+}
+
+void updateSpiralAnimation() {
+  // Spiral effect from outside (ring) to inside (center)
+  // Only works with 13-LED eyes
+  if (activeEyeLEDCount != 13) {
+    Serial.println("Warning: Spiral mode requires 13-LED eyes");
+    stopAllAnimations();
+    return;
+  }
+
+  unsigned long currentTime = millis();
+
+  if (currentTime - animState.lastScannerUpdate >= 80) {  // 80ms per step
+    animState.lastScannerUpdate = currentTime;
+
+    // Clear eyes
+    leftEye.clear();
+    rightEye.clear();
+
+    // Spiral effect: light up LEDs in sequence
+    int step = animState.scannerPosition % 13;
+
+    if (step < 12) {
+      // Ring LEDs (1-12) light up in sequence
+      for (int i = 1; i <= step + 1; i++) {
+        float intensity = (float)i / 12.0;  // Fade from dim to bright
+        uint32_t color = adjustColorBrightness(animState.baseColorLeft, intensity);
+        leftEye.setPixelColor(i, color);
+        rightEye.setPixelColor(i, color);
+      }
+    } else {
+      // All ring LEDs lit, center LED flashes
+      for (int i = 1; i <= 12; i++) {
+        leftEye.setPixelColor(i, animState.baseColorLeft);
+        rightEye.setPixelColor(i, animState.baseColorRight);
+      }
+      leftEye.setPixelColor(0, animState.baseColorLeft);
+      rightEye.setPixelColor(0, animState.baseColorRight);
+    }
+
+    leftEye.show();
+    rightEye.show();
+
+    animState.scannerPosition++;
+    if (animState.scannerPosition >= 13) {
+      animState.scannerPosition = 0;  // Loop
+    }
+  }
+}
+
+void updateFocusAnimation() {
+  // Focus effect: Ring blinks while center stays on
+  // Only works with 13-LED eyes
+  if (activeEyeLEDCount != 13) {
+    Serial.println("Warning: Focus mode requires 13-LED eyes");
+    stopAllAnimations();
+    return;
+  }
+
+  unsigned long currentTime = millis();
+
+  if (currentTime - animState.lastFlickerUpdate >= 300) {  // 300ms blink interval
+    animState.lastFlickerUpdate = currentTime;
+
+    // Clear eyes
+    leftEye.clear();
+    rightEye.clear();
+
+    // Center LED always on
+    leftEye.setPixelColor(0, animState.baseColorLeft);
+    rightEye.setPixelColor(0, animState.baseColorRight);
+
+    // Ring blinks on/off
+    bool ringOn = (currentTime / 300) % 2 == 0;
+    if (ringOn) {
+      for (int i = 1; i <= 12; i++) {
+        leftEye.setPixelColor(i, animState.baseColorLeft);
+        rightEye.setPixelColor(i, animState.baseColorRight);
+      }
+    }
+
+    leftEye.show();
+    rightEye.show();
+  }
+}
+
+void updateRadarAnimation() {
+  // Radar sweep effect in ring with fade trail
+  // Only works with 13-LED eyes
+  if (activeEyeLEDCount != 13) {
+    Serial.println("Warning: Radar mode requires 13-LED eyes");
+    stopAllAnimations();
+    return;
+  }
+
+  unsigned long currentTime = millis();
+
+  if (currentTime - animState.lastScannerUpdate >= 60) {  // 60ms per step
+    animState.lastScannerUpdate = currentTime;
+
+    // Clear eyes
+    leftEye.clear();
+    rightEye.clear();
+
+    // Center LED stays dimly lit
+    uint32_t centerColor = adjustColorBrightness(animState.baseColorLeft, 0.3);
+    leftEye.setPixelColor(0, centerColor);
+    rightEye.setPixelColor(0, centerColor);
+
+    // Radar beam with longer fade trail
+    for (int i = 0; i < 6; i++) {  // 6 LED trail
+      int ledIndex = (animState.scannerPosition - i);
+      if (ledIndex < 1) ledIndex += 12;  // Wrap around ring
+
+      float intensity = 1.0 - (float)i / 6.0;  // Fade out
+      uint32_t beamColor = adjustColorBrightness(animState.baseColorLeft, intensity);
+
+      leftEye.setPixelColor(ledIndex, beamColor);
+      rightEye.setPixelColor(ledIndex, beamColor);
+    }
+
+    leftEye.show();
+    rightEye.show();
+
+    // Move radar beam around ring (1-12)
+    animState.scannerPosition++;
+    if (animState.scannerPosition > 12) {
+      animState.scannerPosition = 1;
+    }
+  }
+}
+
+//========================================
+// SYNCHRONIZED ANIMATION UPDATE FUNCTIONS
+//========================================
+
+void updateHeartbeatAnimation() {
+  // Heartbeat: synchronized double-pulse like a real heartbeat (lub-dub)
+  unsigned long currentTime = millis();
+  unsigned long elapsed = currentTime - animState.pulseStartTime;
+
+  // Heartbeat cycle: 1200ms total
+  // First beat: 0-200ms (fast pulse)
+  // Rest: 200-400ms
+  // Second beat: 400-600ms (fast pulse)
+  // Long rest: 600-1200ms
+
+  float brightness = 0.0;
+  unsigned long cycleTime = elapsed % 1200;
+
+  if (cycleTime < 200) {
+    // First beat (lub)
+    float beatProgress = (float)cycleTime / 200.0;
+    brightness = sin(beatProgress * PI);  // Quick pulse
+  } else if (cycleTime >= 400 && cycleTime < 600) {
+    // Second beat (dub)
+    float beatProgress = (float)(cycleTime - 400) / 200.0;
+    brightness = sin(beatProgress * PI) * 0.7;  // Slightly weaker pulse
+  } else {
+    // Rest periods
+    brightness = 0.1;  // Dim baseline
+  }
+
+  // Apply brightness to both eyes (synchronized)
+  uint32_t beatColor = adjustColorBrightness(animState.baseColorLeft, brightness);
+
+  for (int i = 0; i < activeEyeLEDCount; i++) {
+    leftEye.setPixelColor(i, beatColor);
+    rightEye.setPixelColor(i, beatColor);
+  }
+
+  leftEye.show();
+  rightEye.show();
+}
+
+void updateAlarmAnimation() {
+  // Alarm: rapid synchronized red/white flashing
+  unsigned long currentTime = millis();
+
+  if (currentTime - animState.lastFlickerUpdate >= 150) {  // 150ms interval
+    animState.lastFlickerUpdate = currentTime;
+
+    // Alternate between red and white
+    uint32_t color;
+    if (animState.animationStep % 2 == 0) {
+      color = getAlertRed();  // Red
+    } else {
+      color = makeColor(255, 255, 255);  // White
+    }
+
+    // Apply to all LEDs on both eyes (synchronized)
+    for (int i = 0; i < activeEyeLEDCount; i++) {
+      leftEye.setPixelColor(i, color);
+      rightEye.setPixelColor(i, color);
+    }
+
+    leftEye.show();
+    rightEye.show();
+
+    animState.animationStep++;
+  }
+}
+
+//========================================
 // UTILITY FUNCTIONS
 //========================================
 
@@ -456,6 +964,15 @@ String getAnimationModeName() {
     case FADE_OFF: return "Fade Off";
     case FLICKER: return "Flicker";
     case PULSE: return "Pulse";
+    case SCANNER: return "Scanner";
+    case IRIS: return "Iris (13-LED)";
+    case TARGETING: return "Targeting (13-LED)";
+    case RING_SCANNER: return "Ring Scanner (13-LED)";
+    case SPIRAL: return "Spiral (13-LED)";
+    case FOCUS: return "Focus (13-LED)";
+    case RADAR: return "Radar (13-LED)";
+    case HEARTBEAT: return "Heartbeat (Synchronized)";
+    case ALARM: return "Alarm (Synchronized)";
     default: return "Unknown";
   }
 }
@@ -555,4 +1072,55 @@ uint32_t getScanningGreen() {
 
 uint32_t getIdleAmber() {
   return makeColor(255, 150, 0); // Warm amber for idle state
+}
+
+//========================================
+// EYE HARDWARE VERSION FUNCTIONS
+//========================================
+
+void setEyeHardwareVersion(EyeHardwareVersion version) {
+  config.eyeVersion = version;
+  updateEyeLEDCount();
+
+  Serial.printf("Eye hardware version set to: %s\n", getEyeHardwareVersionName().c_str());
+  Serial.printf("Active LEDs per eye: %d\n", activeEyeLEDCount);
+
+  // Clear eyes and restart animation
+  leftEye.clear();
+  rightEye.clear();
+  leftEye.show();
+  rightEye.show();
+}
+
+EyeHardwareVersion getEyeHardwareVersion() {
+  return config.eyeVersion;
+}
+
+uint8_t getActiveEyeLEDCount() {
+  return activeEyeLEDCount;
+}
+
+String getEyeHardwareVersionName() {
+  switch (config.eyeVersion) {
+    case EYE_VERSION_7LED:
+      return "7-LED (LEDs 0-6)";
+    case EYE_VERSION_13LED:
+      return "13-LED (LED 0=center, LEDs 1-12=ring)";
+    default:
+      return "Unknown";
+  }
+}
+
+void updateEyeLEDCount() {
+  switch (config.eyeVersion) {
+    case EYE_VERSION_7LED:
+      activeEyeLEDCount = 7;
+      break;
+    case EYE_VERSION_13LED:
+      activeEyeLEDCount = 13;
+      break;
+    default:
+      activeEyeLEDCount = 13; // Default to 13
+      break;
+  }
 }

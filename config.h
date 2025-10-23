@@ -28,7 +28,9 @@
 // NeoPixel Eye LEDs
 #define LEFT_EYE_PIN        3       // GP3 - Left eye NeoPixel
 #define RIGHT_EYE_PIN       4       // GP4 - Right eye NeoPixel
-#define NUM_EYE_PIXELS      7       // Number of pixels per eye
+#define NUM_EYE_PIXELS      13      // Number of pixels per eye (default: 13 LEDs)
+                                    // 13-LED version: LED 0 = center, LEDs 1-12 = ring
+                                    // 7-LED version: LEDs 0-6 (selectable via command)
 
 // Servo Control Pins
 #define EYE_PAN_PIN         5       // GP5 - Eye pan servo
@@ -39,16 +41,18 @@
 // Sensor and Control
 #define IR_RECEIVER_PIN     9       // GP9 - IR receiver
 
-// Detail LEDs for random blinking
-#define DETAIL_LED_1_PIN    10      // GP10 - Detail LED 1
-#define DETAIL_LED_2_PIN    13      // GP13 - Detail LED 2
+// Detail LEDs - WS2812 Strip (UPDATED)
+// Changed from 2 individual LEDs (GP10 + GP13) to WS2812 strip on GP10
+// Supports 1-8 LEDs, default 5 LEDs
+#define DETAIL_LED_PIN      10      // GP10 - WS2812 Detail LED strip
+// Note: GP13 is now free for future use
+
+// Legacy compatibility (old GPIO LED system - deprecated)
+#define DETAIL_LED_COUNT    2       // For backward compatibility with old test code
 
 // Status LED (NEW)
 #define STATUS_LED_PIN      21      // GP21 - Single WS2812 status LED
 #define STATUS_LED_COUNT    1       // Single LED
-
-// Detail LED count
-#define DETAIL_LED_COUNT 2
 
 //========================================
 // WIFI CONFIGURATION - MUST BE CHANGED!
@@ -106,13 +110,22 @@ enum OperatingMode {
   MODE_IR_LEARNING,
   MODE_SETUP_WIZARD,
   MODE_MONITOR,
-  MODE_TEST
+  MODE_TEST,
+  MODE_DEMO
 };
 
 enum PersonalityMode {
   MODE_SCANNING,    // Slow, methodical observation behavior
   MODE_ALERT,       // Fast, reactive behavior
   MODE_IDLE         // Minimal movement, power saving
+};
+
+//========================================
+// EYE HARDWARE CONFIGURATION
+//========================================
+enum EyeHardwareVersion {
+  EYE_VERSION_7LED,     // 7-LED version (LEDs 0-6)
+  EYE_VERSION_13LED     // 13-LED version (LED 0 = center, LEDs 1-12 = ring) - DEFAULT
 };
 
 //========================================
@@ -124,7 +137,15 @@ enum PixelMode {
   FADE_COLOR,       // Fade between colors
   FLICKER,          // Random brightness flicker
   PULSE,            // Smooth brightness pulse
-  SCANNER           // Scanner effect
+  SCANNER,          // Scanner effect
+  IRIS,             // Iris effect (13-LED: ring pulses, center static)
+  TARGETING,        // Targeting effect (13-LED: ring rotates, center blinks)
+  RING_SCANNER,     // Scanner only in ring (13-LED)
+  SPIRAL,           // Spiral from outside to inside
+  FOCUS,            // Ring blinks, center stays on
+  RADAR,            // Radar sweep in ring
+  HEARTBEAT,        // Synchronized heartbeat pulse (both eyes)
+  ALARM             // Synchronized alarm flash (both eyes)
 };
 
 // Animation timing constants
@@ -160,7 +181,8 @@ struct ServoState {
   bool isMoving;
 };
 
-// Detail LED blinker state
+// Legacy Detail LED blinker state (DEPRECATED - kept for compatibility)
+// Note: This is no longer used with WS2812 strips. See detailleds.h for new system.
 struct DetailBlinker {
   uint8_t pin;
   bool state;
@@ -253,8 +275,9 @@ struct ConfigData {
   // LED configuration
   uint8_t eyeBrightness;
   uint8_t ledEffectSpeed;
-  
-  // Status LED configuration (NEW)
+  EyeHardwareVersion eyeVersion;  // Eye hardware version (7 or 13 LEDs)
+
+  // Status LED configuration
   uint8_t statusLedBrightness;
   bool statusLedEnabled;
   
@@ -286,9 +309,10 @@ enum Command {
   CMD_HELP, CMD_STATUS, CMD_RESET, CMD_SAVE, CMD_CONFIG,
   CMD_LEARN, CMD_SCAN, CMD_SHOW, CMD_CLEAR, CMD_DEFAULT,
   CMD_SERVO, CMD_LED, CMD_SOUND, CMD_TIMING,
-  CMD_PROFILE, CMD_MONITOR, CMD_TEST,
+  CMD_PROFILE, CMD_MONITOR, CMD_TEST, CMD_DEMO,
   CMD_BACKUP, CMD_RESTORE, CMD_EXIT,
-  CMD_IR_ON, CMD_IR_OFF, CMD_MODE
+  CMD_IR_ON, CMD_IR_OFF, CMD_MODE,
+  CMD_DETAIL  // Detail LED control command
 };
 
 #endif // K2SO_CONFIG_H

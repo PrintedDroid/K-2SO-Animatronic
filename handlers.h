@@ -41,6 +41,12 @@ void handlePlaySound();              // Play specific sound file
 void handleSetServos();              // Set multiple servo positions
 void handleWebMode();                // Change personality mode via web
 
+// Detail LED web handlers
+void handleDetailCount();            // Set detail LED count via web
+void handleDetailBrightnessWeb();    // Set detail LED brightness via web
+void handleDetailPatternWeb();       // Set detail LED pattern via web
+void handleDetailEnabledWeb();       // Enable/disable detail LEDs via web
+
 //========================================
 // COMMAND PROCESSING FUNCTIONS
 //========================================
@@ -52,6 +58,7 @@ void processCommand(String fullCommand);
 // Specialized command handlers
 void handleServoCommand(String params);
 void handleLEDCommand(String params);
+void handleDetailCommand(String params);  // NEW: Detail LED control (WS2812)
 void handleSoundCommand(String params);
 void handleTimingCommand(String params);
 void handleProfileCommand(String params);
@@ -105,9 +112,11 @@ void handleNormalOperation();        // Main operation loop
 void handleBootSequence(unsigned long currentMillis);
 void handleMonitorMode();            // Live monitoring mode
 void handleTestMode();               // Hardware test mode
+void handleDemoMode();               // Demo mode showing all features
 
 // Mode management
 void enterMonitorMode();             // Enter monitoring mode
+void enterDemoMode();                // Enter demo mode
 void runTestSequence(String params); // Start hardware test
 
 // Sensor handling

@@ -24,8 +24,9 @@ String getIndexPage() {
   html += "<body>\n";
   html += "  <div class='main-container'>\n";
   html += "    " + getStatusSection() + "\n";
-  html += "    " + getServoControlSection() + "\n"; 
+  html += "    " + getServoControlSection() + "\n";
   html += "    " + getLEDControlSection() + "\n";
+  html += "    " + getDetailLEDControlSection() + "\n";
   html += "    " + getAudioControlSection() + "\n";
   html += "    " + getModeControlSection() + "\n";
   html += "  </div>\n";
@@ -594,6 +595,32 @@ String getModeControlSection() {
 )rawliteral";
 }
 
+String getDetailLEDControlSection() {
+  return R"rawliteral(
+    <div class="control-section">
+        <h2 class="section-title">Detail LED Control</h2>
+        <div class="led-controls">
+            <div class="slider-container">
+                <label class="slider-label">LED Count <span class="slider-value" id="detailCountValue">5</span></label>
+                <input type="range" class="slider" id="detailCountSlider" min="1" max="8" value="5" oninput="setDetailCount(this.value)">
+            </div>
+            <div class="slider-container">
+                <label class="slider-label">Brightness <span class="slider-value" id="detailBrightnessValue">150</span></label>
+                <input type="range" class="slider" id="detailBrightnessSlider" min="0" max="255" value="150" oninput="setDetailBrightness(this.value)">
+            </div>
+            <div class="animation-buttons">
+                <button class="animation-btn" onclick="setDetailPattern('blink')">BLINK</button>
+                <button class="animation-btn" onclick="setDetailPattern('fade')">FADE</button>
+                <button class="animation-btn" onclick="setDetailPattern('chase')">CHASE</button>
+                <button class="animation-btn" onclick="setDetailPattern('pulse')">PULSE</button>
+                <button class="animation-btn" onclick="setDetailPattern('random')">RANDOM</button>
+                <button class="animation-btn" onclick="setDetailEnabled('off')">OFF</button>
+            </div>
+        </div>
+    </div>
+)rawliteral";
+}
+
 //========================================
 // JAVASCRIPT SECTION
 //========================================
@@ -974,6 +1001,56 @@ String getPageJavaScript() {
         touchStartY = null;
     });
     
+    // Detail LED control functions
+    async function setDetailCount(value) {
+        document.getElementById('detailCountValue').textContent = value;
+        try {
+            const response = await fetch(`/detailCount?value=${value}`);
+            if (!response.ok) throw new Error('Detail count command failed');
+        } catch (error) {
+            showFeedback('Detail LED error: ' + error.message, 'error');
+        }
+    }
+
+    async function setDetailBrightness(value) {
+        document.getElementById('detailBrightnessValue').textContent = value;
+        try {
+            const response = await fetch(`/detailBrightness?value=${value}`);
+            if (!response.ok) throw new Error('Detail brightness command failed');
+        } catch (error) {
+            showFeedback('Detail LED error: ' + error.message, 'error');
+        }
+    }
+
+    async function setDetailPattern(pattern) {
+        try {
+            showLoading('detail');
+            const response = await fetch(`/detailPattern?pattern=${pattern}`);
+            if (response.ok) {
+                showFeedback('Detail LED pattern: ' + pattern.toUpperCase(), 'success');
+            } else {
+                throw new Error('Pattern command failed');
+            }
+        } catch (error) {
+            showFeedback('Detail LED error: ' + error.message, 'error');
+        } finally {
+            hideLoading('detail');
+        }
+    }
+
+    async function setDetailEnabled(state) {
+        try {
+            const response = await fetch(`/detailEnabled?state=${state}`);
+            if (response.ok) {
+                showFeedback('Detail LEDs: ' + state.toUpperCase(), 'success');
+            } else {
+                throw new Error('Detail enabled command failed');
+            }
+        } catch (error) {
+            showFeedback('Detail LED error: ' + error.message, 'error');
+        }
+    }
+
     console.log('K-2SO Controller ready. Use keyboard shortcuts: C=center, 1/2/3=modes, R/G/B/W=colors, arrows=movement');
 </script>
 )rawliteral";

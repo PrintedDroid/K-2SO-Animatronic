@@ -1,21 +1,22 @@
-# K-2SO Animatronic Sketch
+# K-2SO Animatronic Sketch v1.1.0
 **Advanced ESP32-S3 based animatronics controller for Star Wars K-2SO droid builds**
 
 ## 🤖 Project Overview
 
-This animatronics controller brings your K-2SO droid to life with film-accurate behaviors, advanced servo control, dynamic lighting, high-quality audio, and multiple control interfaces. 
+This animatronics controller brings your K-2SO droid to life with film-accurate behaviors, advanced servo control, dynamic lighting, high-quality audio, and multiple control interfaces.
 Designed for builders who demand professional results.
 
 ### Key Features
 
 - **🎯 4-Servo Motion Control** - Eye pan/tilt + Head pan/tilt with smooth autonomous movement
-- **💡 Dual NeoPixel Eyes** - 7-pixel eyes with advanced animations (fade, flicker, pulse, scanner)
-- **🌐 WiFi Web Interface** - Complete control via modern responsive web UI with gamepad
+- **💡 Dual NeoPixel Eyes** - Configurable 7-LED or 13-LED eyes (13-LED with center + ring design)
+- **✨ Advanced Eye Animations** - 12 animation modes including Circle-Eye effects and synchronized patterns
+- **🌈 Detail LED System** - WS2812 addressable LED strip (1-8 LEDs) with 5 animation patterns
+- **🌐 WiFi Web Interface** - Complete control via modern responsive web UI with gamepad and Detail LED controls
 - **📡 IR Remote Learning** - Program any IR remote with 21-button support
 - **🔊 Professional Audio** - DFPlayer Mini + PAM8406 amplifier with folder organization
 - **💾 EEPROM Configuration** - Persistent settings with profile management
 - **⌨️ Advanced Serial CLI** - Complete command-line interface for configuration
-- **✨ Detail LED System** - Random blinking effects for added realism
 - **🚀 Boot Sequence** - Authentic startup animation and sound
 
 ## 🔧 Hardware Requirements
@@ -23,7 +24,8 @@ Designed for builders who demand professional results.
 ### Core Components
 - **ESP32-S3-Zero** (or compatible ESP32-S3 board)
 - **4x Standard Servos** (180° rotation, SG90 or similar)
-- **2x NeoPixel LED Strips** (7 pixels each, WS2812B)
+- **2x NeoPixel LED Strips** - Configurable: 7 LEDs each (standard) or 13 LEDs each (center + 12-LED ring)
+- **Detail LED Strip** - WS2812B addressable strip (1-8 LEDs, standard 5 LEDs)
 - **5V Power Supply** (adequate for servos - minimum 3A recommended)
 
 ### Audio System
@@ -35,9 +37,8 @@ Designed for builders who demand professional results.
   - **Option 2**: DFPlayer line out → 3.5mm jack (direct line signal)
 - **Speakers** - 4Ω or 8Ω compatible (for amplified output)
 
-### Optional Components  
+### Optional Components
 - **IR Receiver TSOP38238** - For remote control
-- **Detail LEDs** - For random blinking effects
 
 ### Recommended Carrier Board
 - **Droid Logic Motion Board v1.2** - Professional carrier board from Printed-Droid.com
@@ -46,19 +47,19 @@ Designed for builders who demand professional results.
 
 ESP32-S3-Zero Pin Assignments:
 
-GP1  → I2C SDA (future expansion)
-GP2  → I2C SCL (future expansion)
-GP3  → Left Eye NeoPixel (7 pixels)
-GP4  → Right Eye NeoPixel (7 pixels)
-GP5  → Eye Pan Servo
-GP6  → Eye Tilt Servo
-GP7  → Head Pan Servo
-GP8  → Head Tilt Servo
-GP9  → IR Receiver (TSOP38238)
-GP10 → Detail LED 1
-GP11 → DFPlayer TX
-GP12 → DFPlayer RX
-GP13 → Detail LED 2
+GP1  → I2C SDA (future expansion)  
+GP2  → I2C SCL (future expansion)  
+GP3  → Left Eye NeoPixel (7 or 13 LEDs, configurable)  
+GP4  → Right Eye NeoPixel (7 or 13 LEDs, configurable)  
+GP5  → Eye Pan Servo  
+GP6  → Eye Tilt Servo  
+GP7  → Head Pan Servo  
+GP8  → Head Tilt Servo  
+GP9  → IR Receiver (TSOP38238)  
+GP10 → Detail LED Strip (WS2812, 1-8 LEDs)  
+GP11 → DFPlayer TX  
+GP12 → DFPlayer RX  
+GP13 → (Reserved for future expansion)  
 
 ## 🔌 Power Requirements
 
@@ -75,23 +76,23 @@ GP13 → Detail LED 2
 Create the following folder structure on your microSD card (FAT32 format):
 
 
-📁 /
-├── 📁 01/              # Scanning mode sounds
-│   ├── 001.mp3         # Ambient scanning sounds
-│   ├── 002.mp3         # Servo movement sounds
-│   └── ...
-├── 📁 02/              # Alert mode sounds  
-│   ├── 001.mp3         # Alert beeps/warnings
-│   ├── 002.mp3         # Fast response sounds
-│   └── ...
-├── 📁 03/              # Boot sequence
-│   └── 001.mp3         # System startup sound
-└── 📁 04/              # Voice lines/responses
-    ├── 001.mp3         # "I am K-2SO"
-    ├── 002.mp3         # "Behavior"
-    ├── 003.mp3         # "Fresh one"
-    └── ...
-```
+📁 /  
+├── 📁 01/              # Scanning mode sounds  
+│   ├── 001.mp3         # Ambient scanning sounds  
+│   ├── 002.mp3         # Servo movement sounds  
+│   └── ...  
+├── 📁 02/              # Alert mode sounds    
+│   ├── 001.mp3         # Alert beeps/warnings  
+│   ├── 002.mp3         # Fast response sounds  
+│   └── ...  
+├── 📁 03/              # Boot sequence  
+│   └── 001.mp3         # System startup sound  
+└── 📁 04/              # Voice lines/responses  
+    ├── 001.mp3         # "I am K-2SO"  
+    ├── 002.mp3         # "Behavior"  
+    ├── 003.mp3         # "Fresh one"  
+    └── ...  
+```  
 
 ## 🚀 Installation
 
@@ -146,12 +147,13 @@ Built-in (no installation needed):
 ### 3. Project File Structure
 
 
-K-2SO_DroidLogicMotion_v1.0.4/
-├── K-2SO_DroidLogicMotion_v1.0.4.ino    # Main program file
+K-2SO_DroidLogicMotion_v1.1.0/
+├── K-2SO_DroidLogicMotion_v1.10.ino    # Main program file (v1.1.0)
 ├── config.h                              # Hardware configuration
 ├── globals.h                             # Global variable declarations
 ├── handlers.cpp/.h                       # Command processing
-├── animations.cpp/.h                     # LED animation system
+├── animations.cpp/.h                     # LED animation system (12 modes)
+├── detailleds.cpp/.h                     # Detail LED strip control (WS2812)
 ├── webpage.cpp/.h                        # Web interface
 ├── Mp3Notify.cpp/.h                      # Audio system callbacks
 └── README.md                             # This file
@@ -223,7 +225,8 @@ Access via browser: `http://[ESP32_IP_ADDRESS]` or `http://k2so.local`
 
 **Features:**
 - **Servo Gamepad** - 9-button directional control with position display
-- **Eye Controls** - Color picker, animations, brightness slider
+- **Eye Controls** - Color picker, 12 animation modes, brightness slider
+- **Detail LED Controls** - LED count (1-8), brightness, 5 animation patterns (Blink, Fade, Chase, Pulse, Random)
 - **Audio Controls** - Volume control, sound playback buttons
 - **Mode Selection** - Scanning/Alert/Idle personality modes
 - **System Status** - Real-time monitoring (uptime, memory, statistics)
@@ -248,10 +251,25 @@ servo eye limits 45 135 45 135      # Set eye movement ranges
 servo head center 90 90             # Set head center
 servo test all                      # Test all servos
 
-# LED Control  
+# LED Eye Control
 led color 255 0 0                   # Set red eyes (RGB values)
 led brightness 200                  # Set brightness (0-255)
-led mode flicker                    # Set animation mode
+led mode [mode]                     # Set animation mode
+  # Available modes:
+  # - solid, flicker, pulse, scanner, heartbeat, alarm
+  # - 13-LED only: iris, targeting, ring_scanner, spiral, focus, radar
+led eye 7led                        # Switch to 7-LED eyes
+led eye 13led                       # Switch to 13-LED eyes (default)
+led show                            # Display current LED settings
+
+# Detail LED Control (WS2812 Strip)
+detail count 5                      # Set active LED count (1-8)
+detail brightness 150               # Set brightness (0-255)
+detail color 255 0 0                # Set RGB color
+detail pattern [pattern]            # Set animation pattern
+  # Available patterns: blink, fade, chase, pulse, random
+detail on                           # Enable detail LEDs
+detail off                          # Disable detail LEDs
 
 # Audio Control
 sound volume 25                     # Set volume (0-30)
@@ -343,23 +361,62 @@ restore       # Import configuration from hex
 
 ### LED Customization
 
+#### Eye LED Control
+
 
 # Basic Colors
 led color 255 255 255      # White
-led color 255 0 0          # Red  
+led color 255 0 0          # Red
 led color 0 255 0          # Green
 led color 0 0 255          # Blue
 led color 80 150 255       # K-2SO Ice Blue
 
-# Animation Modes
+# Animation Modes (All Eye Configurations)
 led mode solid             # Static color
 led mode flicker           # Random brightness variation
 led mode pulse             # Smooth breathing effect
+led mode scanner           # K-2SO scanner sweep effect
+led mode heartbeat         # Synchronized double-pulse
+led mode alarm             # Rapid red/white flash
+
+# Advanced Animations (13-LED Eyes Only)
+led mode iris              # Ring pulses, center static
+led mode targeting         # Rotating crosshair with center blink
+led mode ring_scanner      # Scanner only in ring
+led mode spiral            # Sequential spiral effect
+led mode focus             # Ring blinks, center stays on
+led mode radar             # Radar sweep in ring
+
+# Eye Hardware Configuration
+led eye 7led               # Switch to 7-LED configuration
+led eye 13led              # Switch to 13-LED configuration (default)
 
 # Brightness Control
 led brightness 255         # Maximum brightness
-led brightness 150         # Medium brightness  
+led brightness 150         # Medium brightness
 led brightness 50          # Dim
+```
+
+#### Detail LED Strip Control
+
+
+# LED Count Configuration
+detail count 8             # Use all 8 LEDs
+detail count 5             # Use 5 LEDs (default)
+detail count 1             # Use only 1 LED
+
+# Animation Patterns
+detail pattern blink       # Standard on/off blinking
+detail pattern fade        # Smooth fade in/out
+detail pattern chase       # Chase effect along strip
+detail pattern pulse       # Breathing pulse effect
+detail pattern random      # Random LED activation
+
+# Color and Brightness
+detail color 255 0 0       # Set red color
+detail brightness 200      # Set brightness level
+detail on                  # Enable detail LEDs
+detail off                 # Disable detail LEDs
 ```
 
 ### Audio System Setup
@@ -376,6 +433,113 @@ led brightness 50          # Dim
 3. **Sound Timing:**
 
    timing sound 10000 30000  # 10-30 second pauses between sounds
+
+## 🌟 New in Version 1.1.0
+
+### Advanced Eye Animation Modes
+
+Version 1.1.0 introduces 8 new animation modes for enhanced visual effects:
+
+#### Circle-Eye Special Effects (13-LED Eyes Only)
+
+The 13-LED eye configuration features a center LED (LED 0) surrounded by a 12-LED ring (LEDs 1-12), enabling sophisticated circular animation patterns:
+
+**Iris Mode** (`led mode iris`)
+- Ring LEDs pulse smoothly while center LED stays static
+- Creates an iris dilation effect
+- Ideal for scanning or focusing behaviors
+
+**Targeting Mode** (`led mode targeting`)
+- 4-point crosshair rotates around the ring
+- Center LED blinks in sync
+- Perfect for targeting or lock-on effects
+
+**Ring Scanner** (`led mode ring_scanner`)
+- Scanner effect isolated to the ring only
+- Center LED remains constantly on
+- Provides a unique scanning pattern
+
+**Spiral Mode** (`led mode spiral`)
+- LEDs light up sequentially from outside to inside
+- Creates a spiral animation effect
+- Great for boot sequences or transitions
+
+**Focus Mode** (`led mode focus`)
+- Ring LEDs blink while center stays on
+- Simulates focusing or concentration
+- Useful for attention-drawing moments
+
+**Radar Mode** (`led mode radar`)
+- Smooth radar sweep around the ring
+- 6-LED fade trail for realistic effect
+- Center LED stays dimly lit
+
+#### Synchronized Effects (All Eye Configurations)
+
+**Heartbeat Mode** (`led mode heartbeat`)
+- Synchronized double-pulse pattern (lub-dub)
+- Both eyes pulse together
+- 1.2-second cycle with realistic timing
+- Creates organic, living appearance
+
+**Alarm Mode** (`led mode alarm`)
+- Rapid red/white alternating flash
+- Both eyes synchronized
+- High-visibility alert pattern
+- 150ms flash interval
+
+### Detail LED Strip System
+
+The Detail LED system now uses addressable WS2812 LEDs with 5 animation patterns:
+
+**Blink Pattern** (`detail pattern blink`)
+- Standard on/off blinking
+- Adjustable speed and brightness
+- All active LEDs blink in unison
+
+**Fade Pattern** (`detail pattern fade`)
+- Smooth fade in/out effect
+- Gentle breathing animation
+- Configurable fade speed
+
+**Chase Pattern** (`detail pattern chase`)
+- Sequential lighting along the strip
+- Creates motion illusion
+- Speed adjustable via timing
+
+**Pulse Pattern** (`detail pattern pulse`)
+- Synchronized pulsing
+- All LEDs breathe together
+- Smooth sine wave modulation
+
+**Random Pattern** (`detail pattern random`)
+- Random LED activation
+- Creates organic blinking effect
+- Individual LED randomization
+
+### Enhanced Web Interface
+
+The web interface now includes a dedicated Detail LED Control section:
+
+- **LED Count Slider**: Adjust active LED count (1-8) in real-time
+- **Brightness Control**: Independent brightness control for detail LEDs
+- **Pattern Buttons**: Quick access to all 5 animation patterns
+- **On/Off Toggle**: Enable/disable detail LEDs without losing settings
+
+### Eye Hardware Configuration
+
+Eyes can now be configured for two hardware variants:
+
+**7-LED Configuration** (`led eye 7led`)
+- Traditional 7-LED strip (LEDs 0-6)
+- Compatible with all standard animation modes
+- Backward compatible with previous builds
+
+**13-LED Configuration** (`led eye 13led`) - Default
+- Center LED (LED 0) + 12-LED ring (LEDs 1-12)
+- Enables all Circle-Eye special effects
+- Recommended for new builds
+- Provides maximum animation variety
 
 ## 🛠️ Troubleshooting
 
@@ -554,8 +718,9 @@ timing alert wait 200 800     # Quick reaction timing
 
 ### Prepared Hardware Interfaces
 - **I2C Bus** (GP1/GP2): Sensor expansion
-- **Detail LEDs** (GP10/GP13): Additional effects
-- **Spare Pins**: Custom sensor integration
+- **Detail LED Strip** (GP10): WS2812 addressable LEDs (1-8 count)
+- **Spare Pin** (GP13): Available for custom sensors or additional features
+- **Additional Expansion**: Custom sensor integration
 
 ### Planned Features
 - PIR motion detection

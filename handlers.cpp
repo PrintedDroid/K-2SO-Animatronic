@@ -21,12 +21,13 @@
 #include <DFMiniMp3.h>
 
 // Custom headers AFTER system libraries
-#include "config.h"       
-#include "handlers.h"     
-#include "animations.h"   
-#include "statusled.h"    // NEW: Status LED functions
-#include "webpage.h"      
-#include "globals.h"      
+#include "config.h"
+#include "handlers.h"
+#include "animations.h"
+#include "statusled.h"    // Status LED functions
+#include "detailleds.h"   // Detail LED functions (WS2812)
+#include "webpage.h"
+#include "globals.h"
 #include "Mp3Notify.h"    
 
 // Forward declaration to access mp3 object from main .ino
@@ -253,19 +254,20 @@ void handleWebMode() {
     
     if (mode == "scanning") {
       currentMode = MODE_SCANNING;
-      statusLEDScanningMode(); // NEW: Update status LED
+      statusLEDScanningMode(); // Update status LED
     } else if (mode == "alert") {
       currentMode = MODE_ALERT;
-      statusLEDAlertMode(); // NEW: Update status LED
+      statusLEDAlertMode(); // Update status LED
     } else if (mode == "idle") {
       currentMode = MODE_IDLE;
-      statusLEDIdleMode(); // NEW: Update status LED
+      statusLEDIdleMode(); // Update status LED
     } else {
       server.send(400, "text/plain", "Invalid mode");
       return;
     }
-    
+
     setServoParameters();
+    updateDetailColorForMode(currentMode); // NEW: Update detail LEDs for mode
     config.savedMode = currentMode;
     
     if (!isAwake) {
@@ -277,6 +279,80 @@ void handleWebMode() {
     server.send(200, "text/plain", "OK");
   } else {
     server.send(400, "text/plain", "Missing mode parameter");
+  }
+}
+
+//========================================
+// DETAIL LED WEB HANDLERS
+//========================================
+
+void handleDetailCount() {
+  if (server.hasArg("value")) {
+    int count = constrain(server.arg("value").toInt(), 1, 8);
+    setDetailCount(count);
+    Serial.printf("Web request: Detail LED count set to %d\n", count);
+    server.send(200, "text/plain", "OK");
+  } else {
+    server.send(400, "text/plain", "Missing value parameter");
+  }
+}
+
+void handleDetailBrightnessWeb() {
+  if (server.hasArg("value")) {
+    int brightness = constrain(server.arg("value").toInt(), 0, 255);
+    setDetailBrightness(brightness);
+    Serial.printf("Web request: Detail LED brightness set to %d\n", brightness);
+    server.send(200, "text/plain", "OK");
+  } else {
+    server.send(400, "text/plain", "Missing value parameter");
+  }
+}
+
+void handleDetailPatternWeb() {
+  if (server.hasArg("pattern")) {
+    String pattern = server.arg("pattern");
+    pattern.toLowerCase();
+
+    if (pattern == "blink") {
+      startDetailBlink();
+    } else if (pattern == "fade") {
+      startDetailFade();
+    } else if (pattern == "chase") {
+      startDetailChase();
+    } else if (pattern == "pulse") {
+      startDetailPulse();
+    } else if (pattern == "random") {
+      startDetailRandom();
+    } else {
+      server.send(400, "text/plain", "Invalid pattern");
+      return;
+    }
+
+    Serial.printf("Web request: Detail LED pattern set to %s\n", pattern.c_str());
+    server.send(200, "text/plain", "OK");
+  } else {
+    server.send(400, "text/plain", "Missing pattern parameter");
+  }
+}
+
+void handleDetailEnabledWeb() {
+  if (server.hasArg("state")) {
+    String state = server.arg("state");
+    state.toLowerCase();
+
+    if (state == "off") {
+      setDetailEnabled(false);
+      Serial.println("Web request: Detail LEDs disabled");
+      server.send(200, "text/plain", "OK");
+    } else if (state == "on") {
+      setDetailEnabled(true);
+      Serial.println("Web request: Detail LEDs enabled");
+      server.send(200, "text/plain", "OK");
+    } else {
+      server.send(400, "text/plain", "Invalid state");
+    }
+  } else {
+    server.send(400, "text/plain", "Missing state parameter");
   }
 }
 
@@ -320,13 +396,15 @@ Command parseCommand(String cmd) {
   if (cmd == "profile") return CMD_PROFILE;
   if (cmd == "monitor") return CMD_MONITOR;
   if (cmd == "test") return CMD_TEST;
+  if (cmd == "demo") return CMD_DEMO;
   if (cmd == "backup") return CMD_BACKUP;
   if (cmd == "restore") return CMD_RESTORE;
   if (cmd == "exit" || cmd == "normal") return CMD_EXIT;
   if (cmd == "ir on") return CMD_IR_ON;
   if (cmd == "ir off") return CMD_IR_OFF;
   if (cmd == "mode") return CMD_MODE;
-  
+  if (cmd == "detail") return CMD_DETAIL;
+
   return CMD_UNKNOWN;
 }
 
@@ -433,7 +511,11 @@ void processCommand(String fullCommand) {
     case CMD_TEST:
       runTestSequence(params);
       break;
-      
+
+    case CMD_DEMO:
+      enterDemoMode();
+      break;
+
     case CMD_BACKUP:
       backupToSerial();
       break;
@@ -470,21 +552,22 @@ void processCommand(String fullCommand) {
         params.toLowerCase();
         if (params == "scanning") {
           currentMode = MODE_SCANNING;
-          statusLEDScanningMode(); // NEW: Update status LED
+          statusLEDScanningMode(); // Update status LED
           Serial.println("Mode set to SCANNING");
         } else if (params == "alert") {
           currentMode = MODE_ALERT;
-          statusLEDAlertMode(); // NEW: Update status LED
+          statusLEDAlertMode(); // Update status LED
           Serial.println("Mode set to ALERT");
         } else if (params == "idle") {
           currentMode = MODE_IDLE;
-          statusLEDIdleMode(); // NEW: Update status LED
+          statusLEDIdleMode(); // Update status LED
           Serial.println("Mode set to IDLE");
         } else {
           Serial.println("Invalid mode. Use: scanning, alert, or idle");
           break;
         }
         setServoParameters();
+        updateDetailColorForMode(currentMode); // NEW: Update detail LEDs for mode
         config.savedMode = currentMode;
         if (!isAwake) {
           isAwake = true;
@@ -492,7 +575,11 @@ void processCommand(String fullCommand) {
         lastActivityTime = millis();
       }
       break;
-      
+
+    case CMD_DETAIL:
+      handleDetailCommand(params);
+      break;
+
     default:
       Serial.println("Unknown command. Type 'help' for available commands.");
       break;
@@ -802,6 +889,53 @@ void executeButtonCommand(const char* buttonName) {
     }
     return;
   }
+  // Button 7: Start Demo Mode
+  else if (strcmp(buttonName, "7") == 0) {
+    enterDemoMode();
+    Serial.println("Starting comprehensive demo mode");
+    return;
+  }
+  // Button 8: Toggle Detail LEDs
+  else if (strcmp(buttonName, "8") == 0) {
+    setDetailEnabled(!detailState.enabled);
+    Serial.printf("Detail LEDs: %s\n", detailState.enabled ? "ON" : "OFF");
+    return;
+  }
+  // Button 9: Cycle Eye Animation Modes
+  else if (strcmp(buttonName, "9") == 0) {
+    static int animationModeIndex = 0;
+    const PixelMode modes[] = {SOLID_COLOR, FLICKER, PULSE, SCANNER, HEARTBEAT, ALARM};
+    const char* modeNames[] = {"Solid", "Flicker", "Pulse", "Scanner", "Heartbeat", "Alarm"};
+    const int modeCount = 6;
+
+    animationModeIndex = (animationModeIndex + 1) % modeCount;
+
+    switch(modes[animationModeIndex]) {
+      case SOLID_COLOR:
+        setEyeColor(getK2SOBlue(), getK2SOBlue());
+        break;
+      case FLICKER:
+        startFlickerMode();
+        break;
+      case PULSE:
+        startPulseMode();
+        break;
+      case SCANNER:
+        startScannerMode();
+        break;
+      case HEARTBEAT:
+        startHeartbeatMode();
+        break;
+      case ALARM:
+        startAlarmMode();
+        break;
+      default:
+        break;
+    }
+
+    Serial.printf("Eye Animation: %s\n", modeNames[animationModeIndex]);
+    return;
+  }
   // Color cycling commands
   else if (strcmp(buttonName, "*") == 0) {
     uint32_t colors[COLOR_COUNT] = {
@@ -1098,7 +1232,12 @@ void handleLEDCommand(String params) {
     Serial.println("LED commands:");
     Serial.println("  led brightness [0-255]       - Set eye brightness");
     Serial.println("  led color [r] [g] [b]        - Set eye color (0-255 each)");
-    Serial.println("  led mode [solid/flicker/pulse] - Set animation mode");
+    Serial.println("  led mode [mode]              - Set animation mode");
+    Serial.println("    Modes: solid, flicker, pulse, scanner, heartbeat, alarm");
+    Serial.println("    13-LED only: iris, targeting, ring_scanner, spiral, focus, radar");
+    Serial.println("  led eye [7led/13led]         - Set eye hardware version");
+    Serial.println("    7led:  7-LED version (LEDs 0-6)");
+    Serial.println("    13led: 13-LED version (LED 0=center, 1-12=ring) - DEFAULT");
     Serial.println("  led test [left/right/both]  - Test LEDs");
     Serial.println("  led show                     - Show current settings");
     Serial.println("  led status [on/off]          - Enable/disable status LED");
@@ -1122,12 +1261,14 @@ void handleLEDCommand(String params) {
   
   if (args[0] == "show") {
     Serial.println("\n=== LED SETTINGS ===");
+    Serial.printf("Eye Hardware Version: %s\n", getEyeHardwareVersionName().c_str());
+    Serial.printf("Active LEDs per Eye: %d\n", getActiveEyeLEDCount());
     Serial.printf("Eye Brightness: %d/255\n", currentBrightness);
     Serial.printf("Current mode: %s\n", getAnimationModeName().c_str());
     Serial.printf("Left eye color: 0x%06lX\n", (unsigned long)leftEyeCurrentColor);
     Serial.printf("Right eye color: 0x%06lX\n", (unsigned long)rightEyeCurrentColor);
-    Serial.printf("Status LED: %s (Brightness: %d)\n", 
-                  config.statusLedEnabled ? "Enabled" : "Disabled", 
+    Serial.printf("Status LED: %s (Brightness: %d)\n",
+                  config.statusLedEnabled ? "Enabled" : "Disabled",
                   config.statusLedBrightness);
     Serial.printf("Status LED State: %s\n", getStatusLEDStateName(getCurrentStatusLEDState()).c_str());
   }
@@ -1149,7 +1290,7 @@ void handleLEDCommand(String params) {
   else if (args[0] == "mode" && argCount >= 2) {
     String mode = args[1];
     mode.toLowerCase();
-    
+
     if (mode == "solid") {
       currentPixelMode = SOLID_COLOR;
       stopAllAnimations();
@@ -1160,8 +1301,73 @@ void handleLEDCommand(String params) {
     } else if (mode == "pulse") {
       startPulseMode();
       Serial.println("Mode set to pulse");
+    } else if (mode == "scanner") {
+      startScannerMode();
+      Serial.println("Mode set to scanner");
+    } else if (mode == "iris") {
+      if (activeEyeLEDCount == 13) {
+        startIrisMode();
+        Serial.println("Mode set to iris (13-LED)");
+      } else {
+        Serial.println("Error: Iris mode requires 13-LED eyes. Use 'led eye 13led' first.");
+      }
+    } else if (mode == "targeting") {
+      if (activeEyeLEDCount == 13) {
+        startTargetingMode();
+        Serial.println("Mode set to targeting (13-LED)");
+      } else {
+        Serial.println("Error: Targeting mode requires 13-LED eyes. Use 'led eye 13led' first.");
+      }
+    } else if (mode == "ring_scanner") {
+      if (activeEyeLEDCount == 13) {
+        startRingScannerMode();
+        Serial.println("Mode set to ring scanner (13-LED)");
+      } else {
+        Serial.println("Error: Ring scanner mode requires 13-LED eyes. Use 'led eye 13led' first.");
+      }
+    } else if (mode == "spiral") {
+      if (activeEyeLEDCount == 13) {
+        startSpiralMode();
+        Serial.println("Mode set to spiral (13-LED)");
+      } else {
+        Serial.println("Error: Spiral mode requires 13-LED eyes. Use 'led eye 13led' first.");
+      }
+    } else if (mode == "focus") {
+      if (activeEyeLEDCount == 13) {
+        startFocusMode();
+        Serial.println("Mode set to focus (13-LED)");
+      } else {
+        Serial.println("Error: Focus mode requires 13-LED eyes. Use 'led eye 13led' first.");
+      }
+    } else if (mode == "radar") {
+      if (activeEyeLEDCount == 13) {
+        startRadarMode();
+        Serial.println("Mode set to radar (13-LED)");
+      } else {
+        Serial.println("Error: Radar mode requires 13-LED eyes. Use 'led eye 13led' first.");
+      }
+    } else if (mode == "heartbeat") {
+      startHeartbeatMode();
+      Serial.println("Mode set to heartbeat (synchronized)");
+    } else if (mode == "alarm") {
+      startAlarmMode();
+      Serial.println("Mode set to alarm (synchronized)");
     } else {
-      Serial.println("Invalid mode. Use: solid, flicker, or pulse");
+      Serial.println("Invalid mode.");
+      Serial.println("Available: solid, flicker, pulse, scanner, heartbeat, alarm");
+      Serial.println("13-LED only: iris, targeting, ring_scanner, spiral, focus, radar");
+    }
+  }
+  else if (args[0] == "eye" && argCount >= 2) {
+    String eyeVersion = args[1];
+    eyeVersion.toLowerCase();
+
+    if (eyeVersion == "7led") {
+      setEyeHardwareVersion(EYE_VERSION_7LED);
+    } else if (eyeVersion == "13led") {
+      setEyeHardwareVersion(EYE_VERSION_13LED);
+    } else {
+      Serial.println("Invalid eye version. Use: 7led or 13led");
     }
   }
   else if (args[0] == "status" && argCount >= 2) {
@@ -1211,6 +1417,133 @@ void handleLEDCommand(String params) {
     }
     
     Serial.println("LED test complete");
+  }
+}
+
+//========================================
+// DETAIL LED COMMAND HANDLER (NEW - WS2812)
+//========================================
+
+void handleDetailCommand(String params) {
+  if (params.length() == 0) {
+    Serial.println("\n=== Detail LED Commands ===");
+    Serial.println("  detail show                     - Show current settings");
+    Serial.println("  detail count [1-8]              - Set number of active LEDs (default: 5)");
+    Serial.println("  detail brightness [0-255]       - Set brightness");
+    Serial.println("  detail color [r] [g] [b]        - Set RGB color (0-255 each)");
+    Serial.println("  detail pattern [name]           - Set animation pattern");
+    Serial.println("    Patterns: blink, fade, chase, pulse, random");
+    Serial.println("  detail on                       - Enable detail LEDs");
+    Serial.println("  detail off                      - Disable detail LEDs");
+    Serial.println("  detail auto [on/off]            - Auto color based on mode");
+    Serial.println("  detail test                     - Run test sequence");
+    Serial.println("===========================\n");
+    return;
+  }
+
+  String args[4];
+  int argCount = 0;
+  int startIdx = 0;
+
+  for (int i = 0; i <= params.length() && argCount < 4; i++) {
+    if (i == params.length() || params[i] == ' ') {
+      if (i > startIdx) {
+        args[argCount++] = params.substring(startIdx, i);
+      }
+      startIdx = i + 1;
+    }
+  }
+
+  if (args[0] == "show") {
+    printDetailLEDStatus();
+  }
+  else if (args[0] == "count" && argCount >= 2) {
+    int count = args[1].toInt();
+    setDetailCount(count);
+  }
+  else if (args[0] == "brightness" && argCount >= 2) {
+    int brightness = constrain(args[1].toInt(), 0, 255);
+    setDetailBrightness(brightness);
+  }
+  else if (args[0] == "color" && argCount >= 4) {
+    int r = constrain(args[1].toInt(), 0, 255);
+    int g = constrain(args[2].toInt(), 0, 255);
+    int b = constrain(args[3].toInt(), 0, 255);
+    setDetailColor(r, g, b);
+  }
+  else if (args[0] == "pattern" && argCount >= 2) {
+    String pattern = args[1];
+    pattern.toLowerCase();
+
+    if (pattern == "blink") {
+      startDetailBlink();
+    } else if (pattern == "fade") {
+      startDetailFade();
+    } else if (pattern == "chase") {
+      startDetailChase();
+    } else if (pattern == "pulse") {
+      startDetailPulse();
+    } else if (pattern == "random") {
+      startDetailRandom();
+    } else {
+      Serial.println("Invalid pattern. Use: blink, fade, chase, pulse, or random");
+    }
+  }
+  else if (args[0] == "on") {
+    setDetailEnabled(true);
+  }
+  else if (args[0] == "off") {
+    setDetailEnabled(false);
+  }
+  else if (args[0] == "auto" && argCount >= 2) {
+    String autoMode = args[1];
+    autoMode.toLowerCase();
+
+    if (autoMode == "on") {
+      setDetailAutoColorMode(true);
+    } else if (autoMode == "off") {
+      setDetailAutoColorMode(false);
+    } else {
+      Serial.println("Use: detail auto on/off");
+    }
+  }
+  else if (args[0] == "test") {
+    Serial.println("\n=== Detail LED Test Sequence ===");
+
+    // Test all patterns
+    Serial.println("Testing BLINK pattern (red)...");
+    setDetailColor(255, 0, 0);
+    startDetailBlink();
+    delay(2000);
+
+    Serial.println("Testing FADE pattern (green)...");
+    setDetailColor(0, 255, 0);
+    startDetailFade();
+    delay(2000);
+
+    Serial.println("Testing PULSE pattern (blue)...");
+    setDetailColor(0, 0, 255);
+    startDetailPulse();
+    delay(2000);
+
+    Serial.println("Testing CHASE pattern (yellow)...");
+    setDetailColor(255, 255, 0);
+    startDetailChase();
+    delay(2000);
+
+    Serial.println("Testing RANDOM pattern (purple)...");
+    setDetailColor(255, 0, 255);
+    startDetailRandom();
+    delay(2000);
+
+    // Return to default
+    Serial.println("Returning to default (red blink)...");
+    setDetailDefaultRed();
+
+    Serial.println("Detail LED test complete!\n");
+  }
+  else {
+    Serial.println("Invalid detail command. Type 'detail' for help.");
   }
 }
 
@@ -1434,10 +1767,11 @@ void showHelp() {
   Serial.println("  ir on/off - Enable/disable IR receiver");
   
   Serial.println("\nHARDWARE CONFIGURATION:");
-  Serial.println("  servo [options] - Configure servo settings");
-  Serial.println("  led [options]   - Configure LED settings (eyes + status)");
-  Serial.println("  sound [options] - Configure audio settings");
-  Serial.println("  timing [options]- Configure movement timing");
+  Serial.println("  servo [options]  - Configure servo settings");
+  Serial.println("  led [options]    - Configure LED settings (eyes + status)");
+  Serial.println("  detail [options] - Configure detail LEDs (WS2812 strip)");
+  Serial.println("  sound [options]  - Configure audio settings");
+  Serial.println("  timing [options] - Configure movement timing");
   
   Serial.println("\nPROFILE MANAGEMENT:");
   Serial.println("  profile save [name]  - Save current settings as profile");
@@ -1448,15 +1782,25 @@ void showHelp() {
   Serial.println("\nSYSTEM TOOLS:");
   Serial.println("  monitor   - Live system monitoring mode");
   Serial.println("  test      - Hardware test sequence");
+  Serial.println("  demo      - Comprehensive demo of all features");
   Serial.println("  backup    - Export configuration as hex");
   Serial.println("  restore   - Import configuration from hex");
   Serial.println("  exit      - Exit special modes");
-  
+
+  Serial.println("\nIR REMOTE BUTTONS:");
+  Serial.println("  1-3: Personality modes (Scanning, Alert, Idle)");
+  Serial.println("  4-6: Audio (Random Scan, Random Alert, Random Voice)");
+  Serial.println("  7:   Start Demo Mode (showcases all features)");
+  Serial.println("  8:   Toggle Detail LEDs on/off");
+  Serial.println("  9:   Cycle Eye Animations (Solid/Flicker/Pulse/Scanner/etc)");
+  Serial.println("  UP/DOWN/LEFT/RIGHT: Eye movement, OK: Center all servos");
+  Serial.println("  */#: Color backward/forward, 0: Eyes on/off");
+
   Serial.println("\nSTATUS LED FEATURES:");
   Serial.println("  Status LED shows: WiFi status, operating modes, activities");
   Serial.println("  Blue pulse=scanning, Red pulse=alert, Amber pulse=idle");
   Serial.println("  Green=WiFi connected, Red=disconnected, White flash=IR activity");
-  
+
   Serial.println("\nType any command without parameters for detailed help.");
   Serial.println("Web interface available at: http://" + WiFi.localIP().toString());
 }
@@ -1785,22 +2129,22 @@ void handleTestMode() {
       
     case 8:
       if (currentMillis - testTimer > 3000) {
-        Serial.println("Testing Detail LEDs");
-        for (int i = 0; i < DETAIL_LED_COUNT; i++) {
-          digitalWrite(DETAIL_LED_PINS[i], HIGH);
-        }
+        Serial.println("Testing Detail LEDs (WS2812)");
+        // Test new WS2812 detail LEDs
+        setDetailColor(255, 0, 0);
+        setDetailEnabled(true);
+        startDetailBlink();
         testStep++;
         testTimer = currentMillis;
       }
       break;
-      
+
     case 9:
       if (currentMillis - testTimer > 2000) {
-        for (int i = 0; i < DETAIL_LED_COUNT; i++) {
-          digitalWrite(DETAIL_LED_PINS[i], LOW);
-        }
+        // Turn off detail LEDs
+        setDetailEnabled(false);
         Serial.println("Testing Status LED System");
-        statusLEDSystemTest(); // NEW: Test status LED
+        statusLEDSystemTest(); // Test status LED
         testStep++;
         testTimer = currentMillis;
       }
@@ -1812,6 +2156,346 @@ void handleTestMode() {
         Serial.println("All systems tested successfully!");
         operatingMode = MODE_NORMAL;
         autoUpdateStatusLED(); // NEW: Return to normal status
+      }
+      break;
+  }
+}
+
+//========================================
+// DEMO MODE - Comprehensive Feature Demonstration
+//========================================
+
+void enterDemoMode() {
+  Serial.println("\n╔═══════════════════════════════════════╗");
+  Serial.println("║  K-2SO COMPREHENSIVE DEMO MODE        ║");
+  Serial.println("║  Showcasing all features              ║");
+  Serial.println("╚═══════════════════════════════════════╝\n");
+
+  operatingMode = MODE_DEMO;
+  testStep = 0;
+  testTimer = millis();
+  isAwake = true;
+
+  Serial.println("Demo will show:");
+  Serial.println("• All 12 Eye Animation Modes");
+  Serial.println("• All 5 Detail LED Patterns");
+  Serial.println("• Color Changes");
+  Serial.println("• Servo Movements");
+  Serial.println("• Audio System\n");
+  Serial.println("Press any key to exit demo...\n");
+}
+
+void handleDemoMode() {
+  unsigned long currentMillis = millis();
+
+  // Exit demo if serial input detected
+  if (Serial.available() > 0) {
+    Serial.read();  // Clear buffer
+    Serial.println("\n=== Demo Mode Stopped ===");
+    operatingMode = MODE_NORMAL;
+    setEyeColor(getK2SOBlue(), getK2SOBlue());
+    // Restore detail LED defaults
+    setDetailColor(255, 0, 0);  // Red
+    startDetailRandom();
+    autoUpdateStatusLED();
+    return;
+  }
+
+  switch (testStep) {
+    // ==== EYE ANIMATIONS ====
+    case 0:
+      Serial.println("\n▶ Demonstrating: EYE ANIMATIONS");
+      Serial.println("1/12: Solid Color (K-2SO Blue)");
+      setEyeColor(getK2SOBlue(), getK2SOBlue());
+      setEyeHardwareVersion(EYE_VERSION_13LED);  // Ensure 13-LED mode
+      testStep++;
+      testTimer = currentMillis;
+      break;
+
+    case 1:
+      if (currentMillis - testTimer > 2000) {
+        Serial.println("2/12: Flicker Animation");
+        startFlickerMode(getK2SOBlue());
+        testStep++;
+        testTimer = currentMillis;
+      }
+      break;
+
+    case 2:
+      if (currentMillis - testTimer > 3000) {
+        Serial.println("3/12: Pulse Animation");
+        startPulseMode(getK2SOBlue());
+        testStep++;
+        testTimer = currentMillis;
+      }
+      break;
+
+    case 3:
+      if (currentMillis - testTimer > 3000) {
+        Serial.println("4/12: Scanner Animation");
+        startScannerMode();
+        testStep++;
+        testTimer = currentMillis;
+      }
+      break;
+
+    case 4:
+      if (currentMillis - testTimer > 4000) {
+        Serial.println("5/12: Heartbeat Animation (Synchronized)");
+        startHeartbeatMode();
+        testStep++;
+        testTimer = currentMillis;
+      }
+      break;
+
+    case 5:
+      if (currentMillis - testTimer > 4000) {
+        Serial.println("6/12: Alarm Animation (Synchronized)");
+        startAlarmMode();
+        testStep++;
+        testTimer = currentMillis;
+      }
+      break;
+
+    case 6:
+      if (currentMillis - testTimer > 3000) {
+        Serial.println("7/12: Iris Animation (13-LED)");
+        startIrisMode();
+        testStep++;
+        testTimer = currentMillis;
+      }
+      break;
+
+    case 7:
+      if (currentMillis - testTimer > 4000) {
+        Serial.println("8/12: Targeting Animation (13-LED)");
+        startTargetingMode();
+        testStep++;
+        testTimer = currentMillis;
+      }
+      break;
+
+    case 8:
+      if (currentMillis - testTimer > 4000) {
+        Serial.println("9/12: Ring Scanner Animation (13-LED)");
+        startRingScannerMode();
+        testStep++;
+        testTimer = currentMillis;
+      }
+      break;
+
+    case 9:
+      if (currentMillis - testTimer > 4000) {
+        Serial.println("10/12: Spiral Animation (13-LED)");
+        startSpiralMode();
+        testStep++;
+        testTimer = currentMillis;
+      }
+      break;
+
+    case 10:
+      if (currentMillis - testTimer > 4000) {
+        Serial.println("11/12: Focus Animation (13-LED)");
+        startFocusMode();
+        testStep++;
+        testTimer = currentMillis;
+      }
+      break;
+
+    case 11:
+      if (currentMillis - testTimer > 4000) {
+        Serial.println("12/12: Radar Animation (13-LED)");
+        startRadarMode();
+        testStep++;
+        testTimer = currentMillis;
+      }
+      break;
+
+    // ==== DETAIL LED PATTERNS ====
+    case 12:
+      if (currentMillis - testTimer > 4000) {
+        Serial.println("\n▶ Demonstrating: DETAIL LED PATTERNS");
+        Serial.println("1/5: Blink Pattern");
+        setDetailColor(255, 0, 0);  // Red
+        startDetailBlink();
+        setDetailEnabled(true);
+        testStep++;
+        testTimer = currentMillis;
+      }
+      break;
+
+    case 13:
+      if (currentMillis - testTimer > 3000) {
+        Serial.println("2/5: Fade Pattern");
+        startDetailFade();
+        testStep++;
+        testTimer = currentMillis;
+      }
+      break;
+
+    case 14:
+      if (currentMillis - testTimer > 3000) {
+        Serial.println("3/5: Chase Pattern");
+        setDetailColor(0, 255, 0);  // Green
+        startDetailChase();
+        testStep++;
+        testTimer = currentMillis;
+      }
+      break;
+
+    case 15:
+      if (currentMillis - testTimer > 3000) {
+        Serial.println("4/5: Pulse Pattern");
+        setDetailColor(0, 0, 255);  // Blue
+        startDetailPulse();
+        testStep++;
+        testTimer = currentMillis;
+      }
+      break;
+
+    case 16:
+      if (currentMillis - testTimer > 3000) {
+        Serial.println("5/5: Random Pattern (Multiple LEDs)");
+        setDetailColor(255, 100, 0);  // Orange
+        startDetailRandom();
+        testStep++;
+        testTimer = currentMillis;
+      }
+      break;
+
+    // ==== COLOR CHANGES ====
+    case 17:
+      if (currentMillis - testTimer > 4000) {
+        Serial.println("\n▶ Demonstrating: COLOR PALETTE");
+        Serial.println("Ice Blue");
+        setEyeColor(getIceBlue(), getIceBlue());
+        testStep++;
+        testTimer = currentMillis;
+      }
+      break;
+
+    case 18:
+      if (currentMillis - testTimer > 2000) {
+        Serial.println("Alert Red");
+        setEyeColor(getAlertRed(), getAlertRed());
+        testStep++;
+        testTimer = currentMillis;
+      }
+      break;
+
+    case 19:
+      if (currentMillis - testTimer > 2000) {
+        Serial.println("Scanning Green");
+        setEyeColor(getScanningGreen(), getScanningGreen());
+        testStep++;
+        testTimer = currentMillis;
+      }
+      break;
+
+    case 20:
+      if (currentMillis - testTimer > 2000) {
+        Serial.println("Idle Amber");
+        setEyeColor(getIdleAmber(), getIdleAmber());
+        testStep++;
+        testTimer = currentMillis;
+      }
+      break;
+
+    // ==== SERVO MOVEMENTS ====
+    case 21:
+      if (currentMillis - testTimer > 2000) {
+        Serial.println("\n▶ Demonstrating: SERVO MOVEMENTS");
+        Serial.println("Eye Movement Pattern");
+        setEyeColor(getK2SOBlue(), getK2SOBlue());
+        eyePan.targetPosition = eyePan.minRange;
+        eyeTilt.targetPosition = eyeTilt.minRange;
+        eyePanServo.write(eyePan.targetPosition);
+        eyeTiltServo.write(eyeTilt.targetPosition);
+        testStep++;
+        testTimer = currentMillis;
+      }
+      break;
+
+    case 22:
+      if (currentMillis - testTimer > 1500) {
+        eyePan.targetPosition = eyePan.maxRange;
+        eyeTilt.targetPosition = eyeTilt.maxRange;
+        eyePanServo.write(eyePan.targetPosition);
+        eyeTiltServo.write(eyeTilt.targetPosition);
+        testStep++;
+        testTimer = currentMillis;
+      }
+      break;
+
+    case 23:
+      if (currentMillis - testTimer > 1500) {
+        eyePan.targetPosition = config.eyePanCenter;
+        eyeTilt.targetPosition = config.eyeTiltCenter;
+        eyePanServo.write(eyePan.targetPosition);
+        eyeTiltServo.write(eyeTilt.targetPosition);
+        Serial.println("Head Movement Pattern");
+        headPan.targetPosition = headPan.minRange;
+        headTilt.targetPosition = headTilt.maxRange;
+        headPanServo.write(headPan.targetPosition);
+        headTiltServo.write(headTilt.targetPosition);
+        testStep++;
+        testTimer = currentMillis;
+      }
+      break;
+
+    case 24:
+      if (currentMillis - testTimer > 2000) {
+        headPan.targetPosition = headPan.maxRange;
+        headTilt.targetPosition = headTilt.minRange;
+        headPanServo.write(headPan.targetPosition);
+        headTiltServo.write(headTilt.targetPosition);
+        testStep++;
+        testTimer = currentMillis;
+      }
+      break;
+
+    case 25:
+      if (currentMillis - testTimer > 2000) {
+        headPan.targetPosition = config.headPanCenter;
+        headTilt.targetPosition = config.headTiltCenter;
+        headPanServo.write(headPan.targetPosition);
+        headTiltServo.write(headTilt.targetPosition);
+        testStep++;
+        testTimer = currentMillis;
+      }
+      break;
+
+    // ==== AUDIO SYSTEM ====
+    case 26:
+      if (currentMillis - testTimer > 1500) {
+        Serial.println("\n▶ Demonstrating: AUDIO SYSTEM");
+        if (isAudioReady) {
+          Serial.println("Playing K-2SO voice line");
+          mp3.playFolderTrack(4, 1);
+        } else {
+          Serial.println("Audio system not available");
+        }
+        testStep++;
+        testTimer = currentMillis;
+      }
+      break;
+
+    // ==== DEMO COMPLETE ====
+    case 27:
+      if (currentMillis - testTimer > 4000) {
+        Serial.println("\n╔═══════════════════════════════════════╗");
+        Serial.println("║  DEMO COMPLETE!                       ║");
+        Serial.println("║  All features demonstrated            ║");
+        Serial.println("╚═══════════════════════════════════════╝\n");
+        Serial.println("Returning to normal operation...\n");
+
+        // Restore normal state
+        operatingMode = MODE_NORMAL;
+        setEyeColor(getK2SOBlue(), getK2SOBlue());
+        // Restore detail LED defaults
+        setDetailColor(255, 0, 0);  // Red
+        startDetailRandom();
+        autoUpdateStatusLED();
       }
       break;
   }
@@ -2070,8 +2754,9 @@ void loadConfiguration() {
     // Default LED settings
     config.eyeBrightness = DEFAULT_BRIGHTNESS;
     config.ledEffectSpeed = 50;
-    
-    // NEW: Default status LED settings
+    config.eyeVersion = EYE_VERSION_13LED;  // Default to 13-LED eyes
+
+    // Default status LED settings
     config.statusLedBrightness = STATUS_LED_BRIGHTNESS;
     config.statusLedEnabled = true;
     
@@ -2151,8 +2836,11 @@ void applyConfiguration() {
   
   currentBrightness = config.eyeBrightness;
   setEyeBrightness(currentBrightness);
-  
-  // NEW: Apply status LED configuration
+
+  // Apply eye hardware version
+  updateEyeLEDCount();
+
+  // Apply status LED configuration
   setStatusLEDConfig(config.statusLedBrightness, config.statusLedEnabled);
   
   if (isAudioReady) {
@@ -2244,22 +2932,13 @@ void restoreFromSerial() {
 }
 
 //========================================
-// DETAIL LED SYSTEM IMPLEMENTATION
+// LEGACY DETAIL LED SYSTEM (DEPRECATED)
+// This function is no longer used - Detail LEDs now use WS2812 system
+// Kept for backward compatibility only
 //========================================
 
 void updateDetailBlinkers(unsigned long now) {
-  for (int i = 0; i < DETAIL_LED_COUNT; i++) {
-    DetailBlinker& blinker = blinkers[i];
-    
-    if (now >= blinker.nextMs) {
-      blinker.state = !blinker.state;
-      digitalWrite(blinker.pin, blinker.state ? HIGH : LOW);
-      
-      if (blinker.state) {
-        blinker.nextMs = now + random(blinker.minOnMs, blinker.maxOnMs + 1);
-      } else {
-        blinker.nextMs = now + random(blinker.minOffMs, blinker.maxOffMs + 1);
-      }
-    }
-  }
+  // This function is deprecated and should not be called
+  // WS2812 detail LEDs are updated via updateDetailLEDs() in detailleds.cpp
+  // Legacy code kept for reference only
 }

@@ -17,7 +17,7 @@ Designed for builders who demand professional results.
 - **🔊 Professional Audio** - DFPlayer Mini + PAM8406 amplifier with folder organization
 - **💾 EEPROM Configuration** - Persistent settings with profile management
 - **⌨️ Advanced Serial CLI** - Complete command-line interface for configuration
-- **🚀 Boot Sequence** - Authentic startup animation and sound
+- **⚡ Dramatic Boot Sequence** - Cinematic 16-second eye awakening with electrical flickering, power surges, and rotating ring calibration
 
 ## 🔧 Hardware Requirements
 
@@ -147,8 +147,8 @@ Built-in (no installation needed):
 ### 3. Project File Structure
 
 
-K-2SO_DroidLogicMotion_v1.1.0/
-├── K-2SO_DroidLogicMotion_v1.10.ino    # Main program file (v1.1.0)
+K-2SO_DroidLogicMotion_v1.0.4/
+├── K-2SO_DroidLogicMotion_v1.0.4.ino    # Main program file (v1.1.0)
 ├── config.h                              # Hardware configuration
 ├── globals.h                             # Global variable declarations
 ├── handlers.cpp/.h                       # Command processing
@@ -193,30 +193,31 @@ To load standard NEC remote codes.
 
 ## 🎮 Control Interfaces
 
-### 1. IR Remote Layout (17-button standard)
+### 1. IR Remote Layout (21-button support)
 
 ┌─────┬─────┬─────┬─────┐
-│  1  │  2  │  3  │  UP │  
-│Scan │Alert│Idle │ Eye │  
+│  1  │  2  │  3  │  UP │
+│Scan │Alert│Idle │ Eye │
 ├─────┼─────┼─────┼─────┤
-│  4  │  5  │  6  │DOWN │  
-│RndS │RndA │Voice│ Eye │  
+│  4  │  5  │  6  │DOWN │
+│RndS │RndA │Voice│ Eye │
 ├─────┼─────┼─────┼─────┤
-│  7  │  8  │  9  │LEFT │  
-│     │     │     │ Eye │  
+│  7  │  8  │  9  │LEFT │
+│Demo │DtlLd│ Anim│ Eye │
 ├─────┼─────┼─────┼─────┤
-│  *  │  0  │  #  │RIGHT│  
-│Col- │On/Of│Col+ │ Eye │  
+│  *  │  0  │  #  │RIGHT│
+│Col- │On/Of│Col+ │ Eye │
 └─────┴─────┴─────┴─────┘
-         │ OK │  
-         │Cntr│  
+         │ OK │
+         │Cntr│
          └────┘
 
 
 #### Button Functions:
 - **Movement**: UP/DOWN/LEFT/RIGHT (direct eye positioning), OK (center all)
-- **Personality**: 1=Scanning(Ice Blue), 2=Alert(Red), 3=Idle(Amber)  
+- **Personality**: 1=Scanning(Ice Blue), 2=Alert(Red), 3=Idle(Amber)
 - **Audio**: 4=Random Scan Sound, 5=Random Alert Sound, 6=Random Voice
+- **Features**: 7=Demo Mode, 8=Toggle Detail LEDs, 9=Cycle Eye Animations
 - **Visual**: *=Color Backward, #=Color Forward, 0=Eyes On/Off
 
 ### 2. Web Interface
@@ -314,6 +315,7 @@ ir on/off     # Enable/disable IR receiver
 
 monitor       # Live system monitoring mode
 test          # Run hardware test sequence
+demo          # Launch comprehensive feature demonstration
 backup        # Export configuration as hex
 restore       # Import configuration from hex
 
@@ -340,6 +342,177 @@ restore       # Import configuration from hex
 - **Movement**: Occasional subtle positioning
 - **Audio**: Silent operation
 - **Timing**: Extended pauses, minimal servo activity
+
+## 🎬 Demo Mode
+
+Demo Mode is a comprehensive feature demonstration that automatically showcases all K-2SO capabilities. Perfect for showing off your build or testing all systems at once!
+
+### How to Start Demo Mode
+
+**Via IR Remote:**
+- Press button **7** on your programmed remote
+
+**Via Serial Command:**
+```
+demo
+```
+
+**Via Web Interface:**
+- Navigate to System Controls → Demo Mode button
+
+### What Demo Mode Shows
+
+Demo Mode runs through a complete sequence demonstrating:
+
+1. **All 12 Eye Animation Modes**
+   - Solid, Flicker, Pulse, Scanner, Heartbeat, Alarm
+   - 13-LED modes: Iris, Targeting, Ring Scanner, Spiral, Focus, Radar
+
+2. **All 5 Detail LED Patterns**
+   - Blink, Fade, Chase, Pulse, Random
+   - Different colors for each pattern
+
+3. **Color Changes**
+   - Cycles through personality mode colors
+   - Ice Blue (Scanning), Alert Red, Idle Amber
+   - Custom color demonstrations
+
+4. **Servo Movements**
+   - Eye pan and tilt positioning
+   - Head movement demonstrations
+   - Smooth transitions between positions
+
+5. **Audio System**
+   - Sound effects from different folders
+   - Volume demonstration
+   - Audio synchronization with movements
+
+### Controlling Demo Mode
+
+- **Duration**: Runs continuously until stopped
+- **Exit**: Press any key in Serial Monitor or press IR button 7 again
+- **Automatic**: Returns to normal Scanning mode when exited
+- **Non-Destructive**: Preserves your configuration settings
+
+### Use Cases
+
+- **Build Showcase**: Impress visitors with automated demonstration
+- **System Testing**: Verify all features are working correctly
+- **Troubleshooting**: Identify which systems need adjustment
+- **Calibration Verification**: Confirm servo ranges and LED brightness
+- **Trade Shows/Events**: Automated display mode for exhibitions
+
+### Demo Mode Behavior
+
+Demo Mode cycles through features with appropriate timing:
+- Each animation runs for ~5 seconds
+- Smooth transitions between modes
+- Status updates printed to Serial Monitor
+- All systems remain controllable after exit
+
+## ⚡ Dramatic Boot Sequence
+
+K-2SO features a cinematic 16-second boot sequence that simulates the droid's eyes awakening with electrical flickering and power surges - just like in the films!
+
+### Boot Sequence Overview
+
+The boot animation is divided into 5 distinct phases that create a dramatic power-up effect:
+
+**Total Duration:** ~16 seconds (28 steps at 600ms each)
+
+### Phase 1: Eye Awakening (Steps 0-11) - 7.2 seconds
+
+**Pupil Flickering (Steps 1-6):**
+- The center LED (pupil) flickers to life with three electrical pulses
+- First pulse: Very weak (10% brightness) - flickers out
+- Second pulse: Stronger (25% brightness) - flickers out
+- Third pulse: Stabilizes at 40% and stays on
+- Gradually brightens to 55%
+
+**Ring Activation (Steps 7-11):**
+- With pupil stable, the 12-LED ring begins flickering
+- Ring first pulse: Very dim (5%) - flickers out
+- Ring second pulse: Brighter (15%) - flickers out
+- Ring stabilizes at 25% and stays illuminated
+- Creates effect of energy spreading from center outward
+
+### Phase 2: Energy Surges (Steps 12-16) - 3 seconds
+
+**Three Rapid Power Flashes:**
+- Flash 1: Both pupil and ring surge to 60-70% brightness
+- Return to baseline (25-55%)
+- Flash 2: Second power surge
+- Return to baseline
+- Flash 3: Final surge before stabilization
+- Simulates electrical system coming online with power fluctuations
+
+### Phase 3: Power Build-up (Steps 17-18) - 1.2 seconds
+
+**Gradual Brightness Increase:**
+- Both pupil and ring brighten together smoothly
+- 50% power level
+- 70% power level
+- Synchronized increase creates unified eye appearance
+
+### Phase 4: Ring Calibration (Steps 19-22) - 2.4 seconds
+
+**Rotating Ring Effect:**
+- Alternating pattern rotates around the 12-LED ring
+- Pattern 1: LEDs 1,3,5,7,9,11 bright - LEDs 2,4,6,8,10,12 dim
+- Pattern 2: LEDs 2,4,6,8,10,12 bright - LEDs 1,3,5,7,9,11 dim
+- Repeats twice for full rotation effect
+- Creates spinning/calibrating appearance - like systems coming online
+
+### Phase 5: Full Power & Activation (Steps 23-27) - 3 seconds
+
+**Final Power-Up:**
+- Step 23: 90% power - nearly ready
+- Step 24: 100% FULL ICE BLUE (RGB: 150, 200, 255) - Eyes fully online!
+- Step 25: Boot sound plays (Folder 03/001.mp3)
+- Step 26: Servo initialization and centering
+- Step 27: System ready - K-2SO is ONLINE!
+
+### Visual Timeline
+
+```
+0s  ━━━ Darkness
+1s  💫 Pupil flickers (weak pulse)
+2s  💫 Pupil flickers (stronger)
+3s  💡 Pupil stabilizes
+4s  ⭕ Ring starts flickering
+5s  ⭕ Ring flickers again
+6s  ⭕ Ring stabilizes
+7s  ⚡ Energy flash 1
+8s  ⚡ Energy flash 2
+9s  ⚡ Energy flash 3
+10s 🔆 Power increasing (50-70%)
+11s 🔄 Ring calibration (rotating pattern)
+12s 🔄 Ring calibration continues
+13s 🔆 90% power
+14s ✨ 100% FULL ICE BLUE - Eyes Online!
+15s 🔊 Boot sound plays
+16s ✅ K-2SO ONLINE!
+```
+
+### Configuration
+
+The boot sequence timing can be adjusted in the configuration:
+
+```cpp
+config.bootSequenceDelay = 600;  // Milliseconds per step (default: 600ms)
+```
+
+**Timing Examples:**
+- 300ms: Fast boot (~8.4 seconds total) - less dramatic
+- 600ms: Default (~16 seconds total) - cinematic
+- 1000ms: Slow boot (~28 seconds total) - very dramatic
+
+### Technical Details
+
+- **13-LED Eye Configuration Required:** The dramatic effects use separate control of center LED (pupil) and 12-LED ring
+- **7-LED Eyes:** Boot sequence still works but uses simplified fade-in effect
+- **Serial Monitor Output:** Each phase prints status messages for debugging
+- **Non-Blocking:** Boot sequence runs in background, system remains responsive
 
 ## 🔧 Advanced Configuration
 
@@ -490,12 +663,13 @@ The 13-LED eye configuration features a center LED (LED 0) surrounded by a 12-LE
 
 ### Detail LED Strip System
 
-The Detail LED system now uses addressable WS2812 LEDs with 5 animation patterns:
+The Detail LED system uses addressable WS2812 LEDs with 5 animation patterns. **Default pattern at startup: Random**
 
 **Blink Pattern** (`detail pattern blink`)
-- Standard on/off blinking
-- Adjustable speed and brightness
+- Standard on/off blinking (500ms ON, 500ms OFF)
+- Steady half-second rhythm for consistent visual effect
 - All active LEDs blink in unison
+- Adjustable brightness
 
 **Fade Pattern** (`detail pattern fade`)
 - Smooth fade in/out effect
@@ -512,10 +686,11 @@ The Detail LED system now uses addressable WS2812 LEDs with 5 animation patterns
 - All LEDs breathe together
 - Smooth sine wave modulation
 
-**Random Pattern** (`detail pattern random`)
-- Random LED activation
-- Creates organic blinking effect
-- Individual LED randomization
+**Random Pattern** (`detail pattern random`) - **DEFAULT**
+- Random LED activation with slow, organic timing (400-1000ms intervals)
+- Creates calm, living effect like electronic circuits
+- Individual LED randomization with variable brightness (20-100%)
+- Much slower than traditional random flicker for pleasing visual aesthetic
 
 ### Enhanced Web Interface
 
@@ -540,6 +715,42 @@ Eyes can now be configured for two hardware variants:
 - Enables all Circle-Eye special effects
 - Recommended for new builds
 - Provides maximum animation variety
+
+### IR Remote Extensions
+
+Three additional IR buttons (7-9) have been added for quick access to advanced features:
+
+**Button 7: Demo Mode**
+- Launches comprehensive feature demonstration
+- Automatically cycles through all animation modes
+- Shows all Detail LED patterns
+- Demonstrates servo movements and audio
+- Press button 7 again or any serial key to exit
+
+**Button 8: Toggle Detail LEDs**
+- Quick on/off toggle for Detail LED strip
+- Preserves current pattern and color settings
+- Instant visual feedback
+- Useful for battery conservation
+
+**Button 9: Cycle Eye Animations**
+- Cycles through the 6 main eye animation modes
+- Sequence: Solid → Flicker → Pulse → Scanner → Heartbeat → Alarm
+- Quick way to change eye effects without web interface
+- Automatically applies K-2SO blue color for Solid mode
+
+### Recent Updates
+
+**Detail LED System Improvements**
+- **Default Pattern Changed:** Random pattern is now default at startup (was Blink)
+- **Random Pattern Timing:** Dramatically slowed from 50-300ms to 400-1000ms intervals
+  - Creates calm, organic "living electronics" effect instead of hectic flicker
+  - Individual LEDs with variable brightness (20-100%)
+  - 8x slower minimum interval for much more pleasing visual
+- **Blink Pattern Timing:** Updated to steady rhythm
+  - Both ON and OFF now 500ms (half-second rhythm)
+  - Creates consistent, predictable blink effect
+  - Perfect for synchronized visual indicators
 
 ## 🛠️ Troubleshooting
 

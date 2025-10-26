@@ -2658,60 +2658,534 @@ void updateServo(ServoState& servo, unsigned long currentMillis) {
 
 void handleBootSequence(unsigned long currentMillis) {
   static unsigned long lastBootStep = 0;
-  
+  static bool firstRun = true;
+
+  // Initialize on first run to avoid huge time difference
+  if (firstRun) {
+    lastBootStep = currentMillis;
+    firstRun = false;
+  }
+
   if (currentMillis - lastBootStep >= config.bootSequenceDelay) {
     lastBootStep = currentMillis;
     
     switch(bootSequenceStep) {
+      // ==== DRAMATIC EYE AWAKENING WITH FLICKERING ====
+      // Pupil flickers to life, then ring, then both brighten
+
       case 0:
-        Serial.println("Boot: LED test");
-        {
-          uint32_t red = Adafruit_NeoPixel::Color(255, 0, 0);
-          setEyeColor(red, red);
-        }
+        Serial.println("Boot: Initializing eyes...");
+        // Complete darkness
+        leftEye.clear();
+        rightEye.clear();
+        leftEye.show();
+        rightEye.show();
         bootSequenceStep++;
         break;
-        
+
+      // === PUPIL FLICKERING (POWER SURGES) ===
       case 1:
+        Serial.println("Boot: Pupil power surge 1");
+        // First flicker - weak pulse
         {
-          uint32_t green = Adafruit_NeoPixel::Color(0, 255, 0);
-          setEyeColor(green, green);
+          uint32_t weakPulse = Adafruit_NeoPixel::Color(10, 15, 18);
+          leftEye.setPixelColor(0, weakPulse);
+          rightEye.setPixelColor(0, weakPulse);
+          leftEye.show();
+          rightEye.show();
         }
         bootSequenceStep++;
         break;
-        
+
       case 2:
+        // Flicker off
+        leftEye.setPixelColor(0, 0);
+        rightEye.setPixelColor(0, 0);
+        leftEye.show();
+        rightEye.show();
+        bootSequenceStep++;
+        break;
+
+      case 3:
+        Serial.println("Boot: Pupil power surge 2");
+        // Second flicker - stronger
         {
-          uint32_t blue = Adafruit_NeoPixel::Color(0, 0, 255);
-          setEyeColor(blue, blue);
+          uint32_t strongerPulse = Adafruit_NeoPixel::Color(25, 35, 40);
+          leftEye.setPixelColor(0, strongerPulse);
+          rightEye.setPixelColor(0, strongerPulse);
+          leftEye.show();
+          rightEye.show();
         }
         bootSequenceStep++;
         break;
-        
-      case 3:
-        Serial.println("Boot: Servo test");
+
+      case 4:
+        // Flicker off
+        leftEye.setPixelColor(0, 0);
+        rightEye.setPixelColor(0, 0);
+        leftEye.show();
+        rightEye.show();
+        bootSequenceStep++;
+        break;
+
+      case 5:
+        Serial.println("Boot: Pupil stabilizing");
+        // Third pulse - stabilizing
+        {
+          uint32_t stable = Adafruit_NeoPixel::Color(40, 55, 65);
+          leftEye.setPixelColor(0, stable);
+          rightEye.setPixelColor(0, stable);
+          leftEye.show();
+          rightEye.show();
+        }
+        bootSequenceStep++;
+        break;
+
+      case 6:
+        // Pupil stays on, gets slightly brighter
+        {
+          uint32_t brighter = Adafruit_NeoPixel::Color(55, 75, 90);
+          leftEye.setPixelColor(0, brighter);
+          rightEye.setPixelColor(0, brighter);
+          leftEye.show();
+          rightEye.show();
+        }
+        bootSequenceStep++;
+        break;
+
+      // === RING STARTS FLICKERING ===
+      case 7:
+        Serial.println("Boot: Ring power surge 1");
+        // Ring first flicker - very weak
+        {
+          uint32_t pupil = Adafruit_NeoPixel::Color(55, 75, 90);
+          uint32_t weakRing = Adafruit_NeoPixel::Color(5, 8, 10);
+
+          leftEye.setPixelColor(0, pupil);
+          rightEye.setPixelColor(0, pupil);
+
+          for (int i = 1; i <= 12; i++) {
+            leftEye.setPixelColor(i, weakRing);
+            rightEye.setPixelColor(i, weakRing);
+          }
+          leftEye.show();
+          rightEye.show();
+        }
+        bootSequenceStep++;
+        break;
+
+      case 8:
+        // Ring flicker off, pupil stays
+        {
+          uint32_t pupil = Adafruit_NeoPixel::Color(55, 75, 90);
+          leftEye.setPixelColor(0, pupil);
+          rightEye.setPixelColor(0, pupil);
+
+          for (int i = 1; i <= 12; i++) {
+            leftEye.setPixelColor(i, 0);
+            rightEye.setPixelColor(i, 0);
+          }
+          leftEye.show();
+          rightEye.show();
+        }
+        bootSequenceStep++;
+        break;
+
+      case 9:
+        Serial.println("Boot: Ring power surge 2");
+        // Ring second flicker - stronger
+        {
+          uint32_t pupil = Adafruit_NeoPixel::Color(60, 80, 95);
+          uint32_t medRing = Adafruit_NeoPixel::Color(15, 20, 25);
+
+          leftEye.setPixelColor(0, pupil);
+          rightEye.setPixelColor(0, pupil);
+
+          for (int i = 1; i <= 12; i++) {
+            leftEye.setPixelColor(i, medRing);
+            rightEye.setPixelColor(i, medRing);
+          }
+          leftEye.show();
+          rightEye.show();
+        }
+        bootSequenceStep++;
+        break;
+
+      case 10:
+        // Ring flicker off again
+        {
+          uint32_t pupil = Adafruit_NeoPixel::Color(60, 80, 95);
+          leftEye.setPixelColor(0, pupil);
+          rightEye.setPixelColor(0, pupil);
+
+          for (int i = 1; i <= 12; i++) {
+            leftEye.setPixelColor(i, 0);
+            rightEye.setPixelColor(i, 0);
+          }
+          leftEye.show();
+          rightEye.show();
+        }
+        bootSequenceStep++;
+        break;
+
+      case 11:
+        Serial.println("Boot: Ring stabilizing");
+        // Ring stabilizes and stays on
+        {
+          uint32_t pupil = Adafruit_NeoPixel::Color(70, 95, 115);
+          uint32_t stableRing = Adafruit_NeoPixel::Color(25, 35, 45);
+
+          leftEye.setPixelColor(0, pupil);
+          rightEye.setPixelColor(0, pupil);
+
+          for (int i = 1; i <= 12; i++) {
+            leftEye.setPixelColor(i, stableRing);
+            rightEye.setPixelColor(i, stableRing);
+          }
+          leftEye.show();
+          rightEye.show();
+        }
+        bootSequenceStep++;
+        break;
+
+      // === SCHNELLE BLITZER ===
+      case 12:
+        Serial.println("Boot: Energy surge - Flash 1");
+        // Blitz 1 - Alle heller
+        {
+          uint32_t flashPupil = Adafruit_NeoPixel::Color(120, 160, 195);
+          uint32_t flashRing = Adafruit_NeoPixel::Color(60, 80, 100);
+
+          leftEye.setPixelColor(0, flashPupil);
+          rightEye.setPixelColor(0, flashPupil);
+
+          for (int i = 1; i <= 12; i++) {
+            leftEye.setPixelColor(i, flashRing);
+            rightEye.setPixelColor(i, flashRing);
+          }
+          leftEye.show();
+          rightEye.show();
+        }
+        bootSequenceStep++;
+        break;
+
+      case 13:
+        // Zurück zu vorher
+        {
+          uint32_t pupil = Adafruit_NeoPixel::Color(70, 95, 115);
+          uint32_t stableRing = Adafruit_NeoPixel::Color(25, 35, 45);
+
+          leftEye.setPixelColor(0, pupil);
+          rightEye.setPixelColor(0, pupil);
+
+          for (int i = 1; i <= 12; i++) {
+            leftEye.setPixelColor(i, stableRing);
+            rightEye.setPixelColor(i, stableRing);
+          }
+          leftEye.show();
+          rightEye.show();
+        }
+        bootSequenceStep++;
+        break;
+
+      case 14:
+        Serial.println("Boot: Energy surge - Flash 2");
+        // Blitz 2
+        {
+          uint32_t flashPupil = Adafruit_NeoPixel::Color(120, 160, 195);
+          uint32_t flashRing = Adafruit_NeoPixel::Color(60, 80, 100);
+
+          leftEye.setPixelColor(0, flashPupil);
+          rightEye.setPixelColor(0, flashPupil);
+
+          for (int i = 1; i <= 12; i++) {
+            leftEye.setPixelColor(i, flashRing);
+            rightEye.setPixelColor(i, flashRing);
+          }
+          leftEye.show();
+          rightEye.show();
+        }
+        bootSequenceStep++;
+        break;
+
+      case 15:
+        // Zurück
+        {
+          uint32_t pupil = Adafruit_NeoPixel::Color(70, 95, 115);
+          uint32_t stableRing = Adafruit_NeoPixel::Color(25, 35, 45);
+
+          leftEye.setPixelColor(0, pupil);
+          rightEye.setPixelColor(0, pupil);
+
+          for (int i = 1; i <= 12; i++) {
+            leftEye.setPixelColor(i, stableRing);
+            rightEye.setPixelColor(i, stableRing);
+          }
+          leftEye.show();
+          rightEye.show();
+        }
+        bootSequenceStep++;
+        break;
+
+      case 16:
+        Serial.println("Boot: Energy surge - Flash 3");
+        // Blitz 3
+        {
+          uint32_t flashPupil = Adafruit_NeoPixel::Color(120, 160, 195);
+          uint32_t flashRing = Adafruit_NeoPixel::Color(60, 80, 100);
+
+          leftEye.setPixelColor(0, flashPupil);
+          rightEye.setPixelColor(0, flashPupil);
+
+          for (int i = 1; i <= 12; i++) {
+            leftEye.setPixelColor(i, flashRing);
+            rightEye.setPixelColor(i, flashRing);
+          }
+          leftEye.show();
+          rightEye.show();
+        }
+        bootSequenceStep++;
+        break;
+
+      // === BOTH BRIGHTEN TOGETHER ===
+      case 17:
+        Serial.println("Boot: Power increasing");
+        // 50% power
+        {
+          uint32_t pupil = Adafruit_NeoPixel::Color(90, 120, 145);
+          uint32_t ring = Adafruit_NeoPixel::Color(45, 60, 75);
+
+          leftEye.setPixelColor(0, pupil);
+          rightEye.setPixelColor(0, pupil);
+
+          for (int i = 1; i <= 12; i++) {
+            leftEye.setPixelColor(i, ring);
+            rightEye.setPixelColor(i, ring);
+          }
+          leftEye.show();
+          rightEye.show();
+        }
+        bootSequenceStep++;
+        break;
+
+      case 18:
+        // 70% power
+        {
+          uint32_t pupil = Adafruit_NeoPixel::Color(115, 150, 185);
+          uint32_t ring = Adafruit_NeoPixel::Color(70, 95, 120);
+
+          leftEye.setPixelColor(0, pupil);
+          rightEye.setPixelColor(0, pupil);
+
+          for (int i = 1; i <= 12; i++) {
+            leftEye.setPixelColor(i, ring);
+            rightEye.setPixelColor(i, ring);
+          }
+          leftEye.show();
+          rightEye.show();
+        }
+        bootSequenceStep++;
+        break;
+
+      // === ROTATING RING EFFECT ===
+      case 19:
+        Serial.println("Boot: Ring calibration");
+        // Ring rotation - Position 0 (LEDs 1,3,5,7,9,11 an)
+        {
+          uint32_t pupil = Adafruit_NeoPixel::Color(115, 150, 185);
+          uint32_t brightRing = Adafruit_NeoPixel::Color(90, 120, 150);
+          uint32_t dimRing = Adafruit_NeoPixel::Color(30, 40, 50);
+
+          leftEye.setPixelColor(0, pupil);
+          rightEye.setPixelColor(0, pupil);
+
+          for (int i = 1; i <= 12; i++) {
+            if (i % 2 == 1) {  // Ungerade LEDs (1,3,5,7,9,11)
+              leftEye.setPixelColor(i, brightRing);
+              rightEye.setPixelColor(i, brightRing);
+            } else {  // Gerade LEDs (2,4,6,8,10,12)
+              leftEye.setPixelColor(i, dimRing);
+              rightEye.setPixelColor(i, dimRing);
+            }
+          }
+          leftEye.show();
+          rightEye.show();
+        }
+        bootSequenceStep++;
+        break;
+
+      case 20:
+        // Ring rotation - Position 1 (LEDs 2,4,6,8,10,12 an)
+        {
+          uint32_t pupil = Adafruit_NeoPixel::Color(115, 150, 185);
+          uint32_t brightRing = Adafruit_NeoPixel::Color(90, 120, 150);
+          uint32_t dimRing = Adafruit_NeoPixel::Color(30, 40, 50);
+
+          leftEye.setPixelColor(0, pupil);
+          rightEye.setPixelColor(0, pupil);
+
+          for (int i = 1; i <= 12; i++) {
+            if (i % 2 == 0) {  // Gerade LEDs
+              leftEye.setPixelColor(i, brightRing);
+              rightEye.setPixelColor(i, brightRing);
+            } else {  // Ungerade LEDs
+              leftEye.setPixelColor(i, dimRing);
+              rightEye.setPixelColor(i, dimRing);
+            }
+          }
+          leftEye.show();
+          rightEye.show();
+        }
+        bootSequenceStep++;
+        break;
+
+      case 21:
+        // Ring rotation - Position 0 again
+        {
+          uint32_t pupil = Adafruit_NeoPixel::Color(115, 150, 185);
+          uint32_t brightRing = Adafruit_NeoPixel::Color(90, 120, 150);
+          uint32_t dimRing = Adafruit_NeoPixel::Color(30, 40, 50);
+
+          leftEye.setPixelColor(0, pupil);
+          rightEye.setPixelColor(0, pupil);
+
+          for (int i = 1; i <= 12; i++) {
+            if (i % 2 == 1) {
+              leftEye.setPixelColor(i, brightRing);
+              rightEye.setPixelColor(i, brightRing);
+            } else {
+              leftEye.setPixelColor(i, dimRing);
+              rightEye.setPixelColor(i, dimRing);
+            }
+          }
+          leftEye.show();
+          rightEye.show();
+        }
+        bootSequenceStep++;
+        break;
+
+      case 22:
+        // Ring rotation - Position 1 again
+        {
+          uint32_t pupil = Adafruit_NeoPixel::Color(115, 150, 185);
+          uint32_t brightRing = Adafruit_NeoPixel::Color(90, 120, 150);
+          uint32_t dimRing = Adafruit_NeoPixel::Color(30, 40, 50);
+
+          leftEye.setPixelColor(0, pupil);
+          rightEye.setPixelColor(0, pupil);
+
+          for (int i = 1; i <= 12; i++) {
+            if (i % 2 == 0) {
+              leftEye.setPixelColor(i, brightRing);
+              rightEye.setPixelColor(i, brightRing);
+            } else {
+              leftEye.setPixelColor(i, dimRing);
+              rightEye.setPixelColor(i, dimRing);
+            }
+          }
+          leftEye.show();
+          rightEye.show();
+        }
+        bootSequenceStep++;
+        break;
+
+      case 23:
+        // 90% power - alle gleichmäßig
+        {
+          uint32_t pupil = Adafruit_NeoPixel::Color(135, 180, 220);
+          uint32_t ring = Adafruit_NeoPixel::Color(105, 140, 175);
+
+          leftEye.setPixelColor(0, pupil);
+          rightEye.setPixelColor(0, pupil);
+
+          for (int i = 1; i <= 12; i++) {
+            leftEye.setPixelColor(i, ring);
+            rightEye.setPixelColor(i, ring);
+          }
+          leftEye.show();
+          rightEye.show();
+        }
+        bootSequenceStep++;
+        break;
+
+      case 24:
+        Serial.println("Boot: Eyes fully online");
+        // Full power - 100% Ice Blue!
+        setEyeColor(getIceBlue(), getIceBlue());
+        bootSequenceStep++;
+        break;
+
+      case 25:
+        // Play boot sound when eyes are fully awake
+        // Wait for audio system to be ready (with retry logic)
+        {
+          static uint8_t audioAttempts = 0;
+          static bool messagePrinted = false;
+          const uint8_t maxAttempts = 10;  // Try up to 10 times (3 seconds total)
+
+          if (!messagePrinted) {
+            Serial.println("Boot: Playing startup sound");
+            Serial.printf("  isAudioReady = %s\n", isAudioReady ? "TRUE" : "FALSE");
+            messagePrinted = true;
+          }
+
+          if (isAudioReady) {
+            // Play boot sound from folder 03, track 001
+            Serial.println("  Attempting to play boot sound...");
+
+            // Give DFPlayer extra time to be ready for commands
+            mp3.loop();  // Process any pending DFPlayer events
+            delay(500);  // Wait for DFPlayer to be fully ready
+
+            // Check if folder 03 has files
+            int folder03Count = mp3.getFolderTrackCount(3);
+            Serial.printf("  Folder 03 has %d files\n", folder03Count);
+
+            if (folder03Count > 0) {
+              // Ensure volume is set
+              mp3.setVolume(config.savedVolume);
+              delay(100);
+
+              // Play the boot sound
+              Serial.println("  Sending playFolderTrack(3, 1) command...");
+              mp3.playFolderTrack(3, 1);
+              delay(200);  // Give time for command to be processed
+
+              Serial.println("✓ Boot sound command sent (Folder 03/001.mp3)");
+            } else {
+              Serial.println("⚠ Warning: Folder 03 is empty or missing!");
+            }
+
+            bootSequenceStep++;
+            audioAttempts = 0;
+            messagePrinted = false;  // Reset for next boot
+          } else if (audioAttempts >= maxAttempts) {
+            Serial.printf("⚠ Audio system not ready after %d attempts - skipping boot sound\n", maxAttempts);
+            bootSequenceStep++;
+            audioAttempts = 0;
+            messagePrinted = false;  // Reset for next boot
+          } else {
+            audioAttempts++;
+            Serial.printf("  Waiting for audio system... (attempt %d/%d)\n", audioAttempts, maxAttempts);
+            // Don't increment bootSequenceStep - stay in case 25 and retry
+          }
+        }
+        break;
+
+      case 26:
+        // Center servos after eyes are awake and sound has played
+        Serial.println("Boot: Initializing servos");
         centerAllServos();
         bootSequenceStep++;
         break;
-        
-      case 4:
-        Serial.println("Boot: Audio test");
-        if (isAudioReady) {
-          playSound(3);
-        }
-        bootSequenceStep++;
-        break;
-        
-      case 5:
-        Serial.println("Boot: Final setup");
-        {
-          uint32_t iceBlue = Adafruit_NeoPixel::Color(80, 150, 255);
-          setEyeColor(iceBlue, iceBlue);
-        }
+
+      case 27:
+        // Final setup - boot complete
+        Serial.println("Boot: Systems online");
         isAwake = true;
         lastActivityTime = millis();
         bootSequenceComplete = true;
-        autoUpdateStatusLED(); // NEW: Update status LED after boot complete
+        autoUpdateStatusLED(); // Update status LED after boot complete
         logSystemEvent("Boot sequence complete");
         Serial.println("K-2SO is now ONLINE and ready for operation!");
         break;
@@ -2771,7 +3245,7 @@ void loadConfiguration() {
     config.alertEyeWaitMax = 1500;
     config.soundPauseMin = 8000;
     config.soundPauseMax = 20000;
-    config.bootSequenceDelay = 300;
+    config.bootSequenceDelay = 600;  // Slower for dramatic flickering effect
     
     // Default settings
     config.savedVolume = 20;

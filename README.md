@@ -6,6 +6,17 @@
 This animatronics controller brings your K-2SO droid to life with film-accurate behaviors, advanced servo control, dynamic lighting, high-quality audio, and multiple control interfaces.
 Designed for builders who demand professional results.
 
+## K-2SO Source Files
+
+The 3D files for K-2SO used in this project are designed by **Droid Division**. You can purchase them from their official stores:
+
+* **Official Website:** [droiddivision.com](https://www.droiddivision.com/)
+* **Etsy Shop:** [DroidDivision on Etsy](https://www.etsy.com/shop/DroidDivision)
+
+Be sure to join the community group on Facebook:
+
+* **Facebook Group:** [Spacebobs Droids](https://www.facebook.com/SpacebobsDroids/)
+
 ### Key Features
 
 - **🎯 4-Servo Motion Control** - Eye pan/tilt + Head pan/tilt with smooth autonomous movement

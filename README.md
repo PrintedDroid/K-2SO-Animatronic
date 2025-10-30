@@ -1,5 +1,6 @@
 # K-2SO Animatronic Sketch v1.1.0
 **Advanced ESP32-S3 based animatronics controller for Star Wars K-2SO droid builds**
+**More info about the Droid Logic Motion Controller Board: https://www.printed-droid.com/kb/droid-logic-motion/
 
 ## 🤖 Project Overview
 

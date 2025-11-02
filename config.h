@@ -14,7 +14,7 @@
 // HARDWARE CONFIGURATION
 //========================================
 
-// Board: Droid Logic Motion Board v1.2 with ESP32-S3-Zero
+// Board: Droid Logic Motion Board with ESP32-S3-Zero
 // Pin assignments for the board
 
 // Audio System (DFPlayer Mini)

@@ -1798,7 +1798,7 @@ void handleAPCommand(String params) {
       defaultAPName.replace(":", "");
       Serial.print(F("AP SSID: "));
       Serial.println(defaultAPName);
-      Serial.println(F("AP Password: k2so2024 (default)"));
+      Serial.println(F("AP Password: k2so2025 (default)"));
       Serial.println(F("Use 'ap set <ssid> <password>' to customize"));
     }
 
@@ -1879,7 +1879,7 @@ void handleAPCommand(String params) {
       smartSaveToEEPROM();
 
       Serial.println(F("AP configuration reset to defaults."));
-      Serial.println(F("Default AP will be K2SO-XXXXXX with password: k2so2024"));
+      Serial.println(F("Default AP will be K2SO-XXXXXX with password: k2so2025"));
     } else {
       Serial.println(F("Operation cancelled."));
     }

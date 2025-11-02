@@ -63,11 +63,11 @@
 
 // WEB INTERFACE AUTHENTICATION (Optional - set to empty string "" to disable)
 #define WEB_AUTH_USER       "admin"                  // Web interface username
-#define WEB_AUTH_PASS       "k2so2024"              // Web interface password (CHANGE THIS!)
+#define WEB_AUTH_PASS       "k2so2025"              // Web interface password (CHANGE THIS!)
 
 // ACCESS POINT CONFIGURATION (Fallback when WiFi station fails)
 // Default AP name will be "K2SO-XXXXXX" where XXXXXX is from MAC address
-#define DEFAULT_AP_PASSWORD "k2so2024"              // Default AP password (min 8 chars for WPA2)
+#define DEFAULT_AP_PASSWORD "k2so2025"              // Default AP password (min 8 chars for WPA2)
 
 //========================================
 // SYSTEM CONSTANTS

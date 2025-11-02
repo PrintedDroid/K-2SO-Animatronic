@@ -55,7 +55,7 @@ This release focuses on critical bug fixes, performance optimizations, and secur
 
 #### 🔒 Security Improvements
 - **Web Authentication**: Added HTTP Basic Authentication to web interface
-  - Default credentials: `admin` / `k2so2024` (configurable in `config.h`)
+  - Default credentials: `admin` / `k2so2025` (configurable in `config.h`)
   - Can be disabled by setting `WEB_AUTH_USER` to empty string
   - Protects all 18 web endpoints from unauthorized access
 - **Buffer Overflow Prevention**: Replaced unsafe `strcpy()` and `sprintf()` with safe alternatives
@@ -93,7 +93,7 @@ This release focuses on critical bug fixes, performance optimizations, and secur
 - Reduced WiFi connection attempts: 30 → 10
 
 #### ⚠️ Breaking Changes
-- **Web interface now requires login** (username: `admin`, password: `k2so2024`)
+- **Web interface now requires login** (username: `admin`, password: `k2so2025`)
   - Users MUST change default password in `config.h` for security
   - Authentication can be disabled by setting `WEB_AUTH_USER` to `""`
 - Shorter boot timeouts may affect slow SD cards (adjustable if needed)
@@ -359,7 +359,7 @@ To load standard NEC remote codes.
 - **mDNS**: `http://k2so.local` (after WiFi connection)
 - **Authentication**: Login required (v1.2.0+)
   - Default username: `admin`
-  - Default password: `k2so2024`
+  - Default password: `k2so2025`
   - ⚠️ **Change password in `config.h` before deployment!**
 
 #### Features Overview
@@ -496,7 +496,7 @@ ap start
 
 **Default AP Settings:**
 - **SSID**: `K2SO-XXXXXX` (where XXXXXX is from device MAC address)
-- **Password**: `k2so2024` (configurable in config.h)
+- **Password**: `k2so2025` (configurable in config.h)
 - **IP Address**: `192.168.4.1` (standard ESP32 AP address)
 
 **How AP Mode Works:**

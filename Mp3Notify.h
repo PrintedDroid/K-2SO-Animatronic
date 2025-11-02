@@ -1,7 +1,6 @@
 /*
 ================================================================================
-// K-2SO Controller MP3 Notification Class - FIXED ENGLISH VERSION
-// COMPLETELY FIXED: No circular dependencies anymore
+// K-2SO Controller MP3 Notification Class
 ================================================================================
 */
 

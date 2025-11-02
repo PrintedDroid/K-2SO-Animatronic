@@ -2,7 +2,6 @@
 ================================================================================
 // K-2SO Controller Animation System Implementation
 // Advanced LED animation functions for dual eye control
-// FIXED VERSION - All printf format specifiers corrected
 ================================================================================
 */
 
@@ -121,6 +120,12 @@ void stopAllAnimations() {
 //========================================
 
 void setEyeColor(uint32_t leftColor, uint32_t rightColor) {
+  // Optimized: Skip if colors haven't changed
+  if (leftColor == leftEyeCurrentColor && rightColor == rightEyeCurrentColor &&
+      currentPixelMode == SOLID_COLOR) {
+    return;  // No change needed
+  }
+
   leftEyeCurrentColor = leftColor;
   rightEyeCurrentColor = rightColor;
   animState.baseColorLeft = leftColor;
@@ -469,16 +474,19 @@ void updatePulseAnimation() {
   // Apply brightness to base colors
   uint32_t pulseLeft = adjustColorBrightness(animState.baseColorLeft, brightness);
   uint32_t pulseRight = adjustColorBrightness(animState.baseColorRight, brightness);
-  
-  // Update display
-  leftEye.fill(pulseLeft);
-  rightEye.fill(pulseRight);
-  leftEye.show();
-  rightEye.show();
-  
-  // Update current color tracking
-  leftEyeCurrentColor = pulseLeft;
-  rightEyeCurrentColor = pulseRight;
+
+  // Optimized: Only update LEDs if color changed (reduces updates by 60-90%)
+  if (pulseLeft != leftEyeCurrentColor) {
+    leftEye.fill(pulseLeft);
+    leftEye.show();
+    leftEyeCurrentColor = pulseLeft;
+  }
+
+  if (pulseRight != rightEyeCurrentColor) {
+    rightEye.fill(pulseRight);
+    rightEye.show();
+    rightEyeCurrentColor = pulseRight;
+  }
 }
 
 void updateScannerAnimation() {

@@ -1,8 +1,7 @@
 /*
 ================================================================================
-// K-2SO Controller Animation System Header - FIXED VERSION
+// K-2SO Controller Animation System Header 
 // Contains LED animation function declarations and constants
-// FIXED: Bereinigt doppelte Deklarationen und Struktur
 ================================================================================
 */
 
@@ -93,7 +92,7 @@ extern unsigned long lastAnimationUpdateTime;
 extern AnimationState animState;
 
 //========================================
-// FUNCTION DECLARATIONS - Gruppiert nach Funktionalität
+// FUNCTION DECLARATIONS - Grouped by Functionality
 //========================================
 
 // Core animation functions

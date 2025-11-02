@@ -2,7 +2,6 @@
 ================================================================================
 // K-2SO Controller Web Interface Implementation - FIXED VERSION
 // Complete HTML/CSS/JavaScript interface for droid control
-// FIXED: Added missing includes for external variables and functions
 ================================================================================
 */
 
@@ -18,7 +17,10 @@
 
 String getIndexPage() {
   String html = "";
-  
+  // Pre-allocate memory to prevent fragmentation during string concatenation
+  // Estimated page size: ~18KB, reserve 20KB to be safe
+  html.reserve(20000);
+
   // Build complete HTML page
   html += getPageHeader();
   html += "<body>\n";
@@ -33,7 +35,7 @@ String getIndexPage() {
   html += getPageJavaScript();
   html += "</body>\n";
   html += "</html>\n";
-  
+
   return html;
 }
 
@@ -1076,9 +1078,9 @@ String formatUptime(unsigned long seconds) {
   unsigned long hours = seconds / 3600;
   unsigned long minutes = (seconds % 3600) / 60;
   unsigned long secs = seconds % 60;
-  
+
   char buffer[16];
-  sprintf(buffer, "%02lu:%02lu:%02lu", hours, minutes, secs);
+  snprintf(buffer, sizeof(buffer), "%02lu:%02lu:%02lu", hours, minutes, secs);
   return String(buffer);
 }
 

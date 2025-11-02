@@ -61,6 +61,14 @@
 #define WIFI_SSID           "Your Homewifi SSID"    // CHANGE THIS!
 #define WIFI_PASSWORD       "Your Homewifi Password" // CHANGE THIS!
 
+// WEB INTERFACE AUTHENTICATION (Optional - set to empty string "" to disable)
+#define WEB_AUTH_USER       "admin"                  // Web interface username
+#define WEB_AUTH_PASS       "k2so2024"              // Web interface password (CHANGE THIS!)
+
+// ACCESS POINT CONFIGURATION (Fallback when WiFi station fails)
+// Default AP name will be "K2SO-XXXXXX" where XXXXXX is from MAC address
+#define DEFAULT_AP_PASSWORD "k2so2024"              // Default AP password (min 8 chars for WPA2)
+
 //========================================
 // SYSTEM CONSTANTS
 //========================================
@@ -272,6 +280,17 @@ struct ConfigData {
   uint8_t headTiltMin;
   uint8_t headTiltMax;
   
+  // WiFi configuration (stored in EEPROM, configurable via serial)
+  char wifiSSID[32];      // WiFi network name (max 31 chars + null terminator)
+  char wifiPassword[64];  // WiFi password (max 63 chars + null terminator)
+  bool wifiConfigured;    // Flag to indicate if WiFi is configured
+
+  // Access Point configuration (stored in EEPROM, configurable via serial)
+  char apSSID[32];        // AP network name (max 31 chars + null terminator)
+  char apPassword[64];    // AP password (max 63 chars + null terminator, min 8 chars for WPA2)
+  bool apConfigured;      // Flag to indicate if AP is configured
+  bool apEnabled;         // Flag to enable/disable AP mode fallback
+
   // LED configuration
   uint8_t eyeBrightness;
   uint8_t ledEffectSpeed;
@@ -312,7 +331,9 @@ enum Command {
   CMD_PROFILE, CMD_MONITOR, CMD_TEST, CMD_DEMO,
   CMD_BACKUP, CMD_RESTORE, CMD_EXIT,
   CMD_IR_ON, CMD_IR_OFF, CMD_MODE,
-  CMD_DETAIL  // Detail LED control command
+  CMD_DETAIL,  // Detail LED control command
+  CMD_WIFI,    // WiFi configuration command
+  CMD_AP       // Access Point configuration command
 };
 
 #endif // K2SO_CONFIG_H

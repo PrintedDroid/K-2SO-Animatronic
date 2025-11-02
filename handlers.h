@@ -1,6 +1,6 @@
 /*
 ================================================================================
-// K-2SO Controller Handler Function Declarations - FIXED VERSION
+// K-2SO Controller Handler Function Declarations
 // Contains all function prototypes for web handlers and command processors
 // Clean structure without circular dependencies
 ================================================================================
@@ -22,6 +22,9 @@ void initializeIR();
 void handleRoot();                    // Main web page
 void handleWebStatus();              // System status via web
 void handleNotFound();               // 404 handler
+
+// Web authentication helper
+bool checkWebAuth();                 // Check web authentication
 
 // LED control handlers
 void handleRed();                    // Set eyes to red
@@ -62,6 +65,8 @@ void handleDetailCommand(String params);  // NEW: Detail LED control (WS2812)
 void handleSoundCommand(String params);
 void handleTimingCommand(String params);
 void handleProfileCommand(String params);
+void handleWiFiCommand(String params);    // WiFi configuration
+void handleAPCommand(String params);       // Access Point configuration
 
 //========================================
 // SYSTEM STATUS AND HELP FUNCTIONS

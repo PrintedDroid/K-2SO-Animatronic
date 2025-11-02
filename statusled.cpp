@@ -20,14 +20,15 @@
 void initializeStatusLED() {
   // Initialize status LED hardware
   statusLED.begin();
-  statusLED.setBrightness(config.statusLedBrightness);
   statusLED.show();
-  
+
   // Initialize animation state
   resetStatusLED();
-  
+
+  // Note: Brightness is set later in applyConfiguration() from EEPROM config
+
   Serial.println("- Status LED: Initialized");
-  
+
   // Brief initialization flash
   setStatusLEDColor(statusColorBlue());
   delay(100);
@@ -505,8 +506,9 @@ void setStatusLEDConfig(uint8_t brightness, bool enabled) {
 //========================================
 
 void statusLEDSystemTest() {
-  Serial.println("Status LED System Test");
-  
+  Serial.println(F("Status LED System Test"));
+  Serial.println(F("Warning: This test blocks for ~2 seconds"));
+
   // Test all basic colors
   uint32_t colors[] = {
     statusColorRed(), statusColorGreen(), statusColorBlue(),
@@ -514,20 +516,21 @@ void statusLEDSystemTest() {
     statusColorWhite(), statusColorOrange(), statusColorAmber(),
     statusColorIceBlue()
   };
-  
+
   const char* colorNames[] = {
-    "Red", "Green", "Blue", "Yellow", "Purple", 
+    "Red", "Green", "Blue", "Yellow", "Purple",
     "Cyan", "White", "Orange", "Amber", "Ice Blue"
   };
-  
+
+  // Reduced delay from 500ms to 200ms (5s total → 2s total)
   for (int i = 0; i < 10; i++) {
     Serial.printf("- Testing %s\n", colorNames[i]);
     setStatusLEDColor(colors[i]);
-    delay(500);
+    delay(200);
   }
-  
+
   statusLEDOff();
-  Serial.println("Status LED test complete");
+  Serial.println(F("Status LED test complete"));
 }
 
 void statusLEDColorTest() {
@@ -536,27 +539,28 @@ void statusLEDColorTest() {
 }
 
 void statusLEDAnimationTest() {
-  Serial.println("Status LED Animation Test");
-  
-  // Test pulse animation
-  Serial.println("- Testing pulse animation");
+  Serial.println(F("Status LED Animation Test"));
+  Serial.println(F("Warning: This test blocks for ~3 seconds"));
+
+  // Test pulse animation (reduced from 3000ms to 1000ms)
+  Serial.println(F("- Testing pulse animation"));
   startStatusLEDPulse(statusColorBlue());
-  delay(3000);
-  
-  // Test blink animation
-  Serial.println("- Testing blink animation");
+  delay(1000);
+
+  // Test blink animation (reduced from 3000ms to 1000ms)
+  Serial.println(F("- Testing blink animation"));
   startStatusLEDBlink(statusColorRed(), 250);
-  delay(3000);
-  
-  // Test flash
-  Serial.println("- Testing flash");
+  delay(1000);
+
+  // Test flash (reduced from 300ms to 200ms)
+  Serial.println(F("- Testing flash"));
   for (int i = 0; i < 5; i++) {
     startStatusLEDFlash(statusColorWhite(), 100);
-    delay(300);
+    delay(200);
   }
-  
+
   statusLEDOff();
-  Serial.println("Animation test complete");
+  Serial.println(F("Animation test complete"));
 }
 
 String getStatusLEDStateName(StatusLEDState state) {

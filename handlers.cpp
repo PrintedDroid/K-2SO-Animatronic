@@ -77,15 +77,32 @@ bool checkForIRCommand(uint32_t& code) {
 }
 
 //========================================
-// WEB SERVER HANDLERS - UPDATED WITH STATUS LED
+// WEB SERVER HANDLERS - UPDATED WITH STATUS LED + AUTHENTICATION
 //========================================
 
+// Helper function to check web authentication
+bool checkWebAuth() {
+  // If auth is disabled (empty username), allow all requests
+  if (strlen(WEB_AUTH_USER) == 0) {
+    return true;
+  }
+
+  // Check if authentication is valid
+  if (!server.authenticate(WEB_AUTH_USER, WEB_AUTH_PASS)) {
+    server.requestAuthentication();
+    return false;
+  }
+  return true;
+}
+
 void handleRoot() {
+  if (!checkWebAuth()) return;
   Serial.println("Web request: Root page");
   server.send(200, "text/html", getIndexPage());
 }
 
 void handleWebStatus() {
+  if (!checkWebAuth()) return;
   Serial.println("Web request: Status");
   String status = "{\n";
   status += "  \"mode\": \"" + getModeName(currentMode) + "\",\n";
@@ -101,8 +118,9 @@ void handleWebStatus() {
 }
 
 void handleSetServos() {
+  if (!checkWebAuth()) return;
   Serial.println("Web request: Set servos");
-  
+
   if (server.hasArg("eyePan") && server.hasArg("eyeTilt") && 
       server.hasArg("headPan") && server.hasArg("headTilt")) {
     
@@ -154,6 +172,7 @@ void handleSetServos() {
 }
 
 void handleRed() {
+  if (!checkWebAuth()) return;
   Serial.println("Web request: Red eyes");
   uint32_t red = Adafruit_NeoPixel::Color(255, 0, 0);
   setEyeColor(red, red);
@@ -163,6 +182,7 @@ void handleRed() {
 }
 
 void handleGreen() {
+  if (!checkWebAuth()) return;
   Serial.println("Web request: Green eyes");
   uint32_t green = Adafruit_NeoPixel::Color(0, 255, 0);
   setEyeColor(green, green);
@@ -172,6 +192,7 @@ void handleGreen() {
 }
 
 void handleBlue() {
+  if (!checkWebAuth()) return;
   Serial.println("Web request: Blue eyes");
   uint32_t blue = Adafruit_NeoPixel::Color(0, 0, 255);
   setEyeColor(blue, blue);
@@ -181,6 +202,7 @@ void handleBlue() {
 }
 
 void handleWhite() {
+  if (!checkWebAuth()) return;
   Serial.println("Web request: White eyes");
   uint32_t white = Adafruit_NeoPixel::Color(255, 255, 255);
   setEyeColor(white, white);
@@ -190,6 +212,7 @@ void handleWhite() {
 }
 
 void handleOff() {
+  if (!checkWebAuth()) return;
   Serial.println("Web request: Eyes off");
   uint32_t off = Adafruit_NeoPixel::Color(0, 0, 0);
   setEyeColor(off, off);
@@ -198,6 +221,7 @@ void handleOff() {
 }
 
 void handleBrightness() {
+  if (!checkWebAuth()) return;
   if (server.hasArg("value")) {
     int brightness = server.arg("value").toInt();
     brightness = constrain(brightness, 0, 255);
@@ -210,6 +234,7 @@ void handleBrightness() {
 }
 
 void handleFlicker() {
+  if (!checkWebAuth()) return;
   Serial.println("Web request: Flicker mode");
   startFlickerMode();
   lastActivityTime = millis();
@@ -217,6 +242,7 @@ void handleFlicker() {
 }
 
 void handlePulse() {
+  if (!checkWebAuth()) return;
   Serial.println("Web request: Pulse mode");
   startPulseMode();
   lastActivityTime = millis();
@@ -224,6 +250,7 @@ void handlePulse() {
 }
 
 void handleVolume() {
+  if (!checkWebAuth()) return;
   if (server.hasArg("value")) {
     int volume = server.arg("value").toInt();
     volume = constrain(volume, 0, 30);
@@ -236,6 +263,7 @@ void handleVolume() {
 }
 
 void handlePlaySound() {
+  if (!checkWebAuth()) return;
   if (server.hasArg("file")) {
     int fileNum = server.arg("file").toInt();
     playSound(fileNum);
@@ -248,6 +276,7 @@ void handlePlaySound() {
 }
 
 void handleWebMode() {
+  if (!checkWebAuth()) return;
   if (server.hasArg("mode")) {
     String mode = server.arg("mode");
     mode.toLowerCase();
@@ -287,6 +316,7 @@ void handleWebMode() {
 //========================================
 
 void handleDetailCount() {
+  if (!checkWebAuth()) return;
   if (server.hasArg("value")) {
     int count = constrain(server.arg("value").toInt(), 1, 8);
     setDetailCount(count);
@@ -298,6 +328,7 @@ void handleDetailCount() {
 }
 
 void handleDetailBrightnessWeb() {
+  if (!checkWebAuth()) return;
   if (server.hasArg("value")) {
     int brightness = constrain(server.arg("value").toInt(), 0, 255);
     setDetailBrightness(brightness);
@@ -309,6 +340,7 @@ void handleDetailBrightnessWeb() {
 }
 
 void handleDetailPatternWeb() {
+  if (!checkWebAuth()) return;
   if (server.hasArg("pattern")) {
     String pattern = server.arg("pattern");
     pattern.toLowerCase();
@@ -336,6 +368,7 @@ void handleDetailPatternWeb() {
 }
 
 void handleDetailEnabledWeb() {
+  if (!checkWebAuth()) return;
   if (server.hasArg("state")) {
     String state = server.arg("state");
     state.toLowerCase();
@@ -404,6 +437,8 @@ Command parseCommand(String cmd) {
   if (cmd == "ir off") return CMD_IR_OFF;
   if (cmd == "mode") return CMD_MODE;
   if (cmd == "detail") return CMD_DETAIL;
+  if (cmd == "wifi") return CMD_WIFI;
+  if (cmd == "ap") return CMD_AP;
 
   return CMD_UNKNOWN;
 }
@@ -580,6 +615,14 @@ void processCommand(String fullCommand) {
       handleDetailCommand(params);
       break;
 
+    case CMD_WIFI:
+      handleWiFiCommand(params);
+      break;
+
+    case CMD_AP:
+      handleAPCommand(params);
+      break;
+
     default:
       Serial.println("Unknown command. Type 'help' for available commands.");
       break;
@@ -694,12 +737,13 @@ void enterLearningMode() {
     Serial.printf("Learning %d buttons.\n", config.buttonCount);
     
     for (int i = 0; i < config.buttonCount && i < 17; i++) {
-      strcpy(config.buttons[i].name, standard17Buttons[i]);
+      strncpy(config.buttons[i].name, standard17Buttons[i], sizeof(config.buttons[i].name) - 1);
+      config.buttons[i].name[sizeof(config.buttons[i].name) - 1] = '\0';  // Ensure null termination
       config.buttons[i].isConfigured = false;
     }
-    
+
     for (int i = 17; i < config.buttonCount; i++) {
-      sprintf(config.buttons[i].name, "BTN%d", i + 1);
+      snprintf(config.buttons[i].name, sizeof(config.buttons[i].name), "BTN%d", i + 1);
       config.buttons[i].isConfigured = false;
     }
   }
@@ -1044,11 +1088,11 @@ void runTestSequence(String params) {
 void handleSoundCommand(String params) {
   if (params.length() == 0) {
     Serial.println("Sound commands:");
-    Serial.println("  sound volume [0-30]          - Set volume");
-    Serial.println("  sound play [file_number]     - Play specific file");
-    Serial.println("  sound folder [folder] [track] - Play from folder");
-    Serial.println("  sound stop                   - Stop playback");
-    Serial.println("  sound show                   - Show settings");
+    Serial.println(F("  sound volume [0-30]          - Set volume"));
+    Serial.println(F("  sound play [file_number]     - Play specific file"));
+    Serial.println(F("  sound folder [folder] [track] - Play from folder"));
+    Serial.println(F("  sound stop                   - Stop playback"));
+    Serial.println(F("  sound show                   - Show settings"));
     return;
   }
   
@@ -1104,12 +1148,12 @@ void handleSoundCommand(String params) {
 void handleServoCommand(String params) {
   if (params.length() == 0) {
     Serial.println("Servo commands:");
-    Serial.println("  servo eye center [pan] [tilt]   - Set eye center positions");
-    Serial.println("  servo eye limits [minP] [maxP] [minT] [maxT] - Set eye limits");
-    Serial.println("  servo head center [pan] [tilt] - Set head center positions");
-    Serial.println("  servo head limits [minP] [maxP] [minT] [maxT] - Set head limits");
-    Serial.println("  servo test [eye/head/all]      - Test servo movement");
-    Serial.println("  servo show                     - Show all servo settings");
+    Serial.println(F("  servo eye center [pan] [tilt]   - Set eye center positions"));
+    Serial.println(F("  servo eye limits [minP] [maxP] [minT] [maxT] - Set eye limits"));
+    Serial.println(F("  servo head center [pan] [tilt] - Set head center positions"));
+    Serial.println(F("  servo head limits [minP] [maxP] [minT] [maxT] - Set head limits"));
+    Serial.println(F("  servo test [eye/head/all]      - Test servo movement"));
+    Serial.println(F("  servo show                     - Show all servo settings"));
     return;
   }
   
@@ -1187,42 +1231,48 @@ void handleServoCommand(String params) {
   }
   else if (args[0] == "test") {
     if (argCount < 2 || args[1] == "all") {
-      Serial.println("Testing all servos...");
+      Serial.println(F("Quick servo test - for full non-blocking test, use 'test' command"));
+      Serial.println(F("Testing all servos..."));
+
+      // Quick test with reduced delays to minimize blocking
       centerAllServos();
-      delay(1000);
-      
-      // Test eye servos
+      unsigned long testDelay = 300; // Reduced from 1000ms to 300ms
+
+      // Test eye servos - min position
       eyePan.targetPosition = eyePan.minRange;
       eyeTilt.targetPosition = eyeTilt.minRange;
       eyePanServo.write(eyePan.targetPosition);
       eyeTiltServo.write(eyeTilt.targetPosition);
-      statusLEDServoActivity(); // NEW: Flash blue for servo
-      delay(1000);
-      
+      statusLEDServoActivity();
+      delay(testDelay);
+
+      // Test eye servos - max position
       eyePan.targetPosition = eyePan.maxRange;
       eyeTilt.targetPosition = eyeTilt.maxRange;
       eyePanServo.write(eyePan.targetPosition);
       eyeTiltServo.write(eyeTilt.targetPosition);
-      statusLEDServoActivity(); // NEW: Flash blue for servo
-      delay(1000);
-      
-      // Test head servos
+      statusLEDServoActivity();
+      delay(testDelay);
+
+      // Test head servos - min position
       headPan.targetPosition = headPan.minRange;
       headTilt.targetPosition = headTilt.minRange;
       headPanServo.write(headPan.targetPosition);
       headTiltServo.write(headTilt.targetPosition);
-      statusLEDServoActivity(); // NEW: Flash blue for servo
-      delay(1000);
-      
+      statusLEDServoActivity();
+      delay(testDelay);
+
+      // Test head servos - max position
       headPan.targetPosition = headPan.maxRange;
       headTilt.targetPosition = headTilt.maxRange;
       headPanServo.write(headPan.targetPosition);
       headTiltServo.write(headTilt.targetPosition);
-      statusLEDServoActivity(); // NEW: Flash blue for servo
-      delay(1000);
-      
+      statusLEDServoActivity();
+      delay(testDelay);
+
       centerAllServos();
-      Serial.println("Servo test complete");
+      Serial.println(F("Quick servo test complete (1.2s blocked)"));
+      Serial.println(F("Tip: Use 'test' command for full non-blocking hardware test"));
     }
   }
 }
@@ -1230,19 +1280,19 @@ void handleServoCommand(String params) {
 void handleLEDCommand(String params) {
   if (params.length() == 0) {
     Serial.println("LED commands:");
-    Serial.println("  led brightness [0-255]       - Set eye brightness");
-    Serial.println("  led color [r] [g] [b]        - Set eye color (0-255 each)");
-    Serial.println("  led mode [mode]              - Set animation mode");
+    Serial.println(F("  led brightness [0-255]       - Set eye brightness"));
+    Serial.println(F("  led color [r] [g] [b]        - Set eye color (0-255 each)"));
+    Serial.println(F("  led mode [mode]              - Set animation mode"));
     Serial.println("    Modes: solid, flicker, pulse, scanner, heartbeat, alarm");
     Serial.println("    13-LED only: iris, targeting, ring_scanner, spiral, focus, radar");
-    Serial.println("  led eye [7led/13led]         - Set eye hardware version");
+    Serial.println(F("  led eye [7led/13led]         - Set eye hardware version"));
     Serial.println("    7led:  7-LED version (LEDs 0-6)");
     Serial.println("    13led: 13-LED version (LED 0=center, 1-12=ring) - DEFAULT");
-    Serial.println("  led test [left/right/both]  - Test LEDs");
-    Serial.println("  led show                     - Show current settings");
-    Serial.println("  led status [on/off]          - Enable/disable status LED");
-    Serial.println("  led status brightness [0-255] - Set status LED brightness");
-    Serial.println("  led status test              - Test status LED");
+    Serial.println(F("  led test [left/right/both]  - Test LEDs"));
+    Serial.println(F("  led show                     - Show current settings"));
+    Serial.println(F("  led status [on/off]          - Enable/disable status LED"));
+    Serial.println(F("  led status brightness [0-255] - Set status LED brightness"));
+    Serial.println(F("  led status test              - Test status LED"));
     return;
   }
   
@@ -1396,23 +1446,25 @@ void handleLEDCommand(String params) {
       uint32_t green = Adafruit_NeoPixel::Color(0, 255, 0);
       uint32_t blue = Adafruit_NeoPixel::Color(0, 0, 255);
       uint32_t off = Adafruit_NeoPixel::Color(0, 0, 0);
-      
-      setLeftEyeColor(red); delay(500);
-      setLeftEyeColor(green); delay(500);
-      setLeftEyeColor(blue); delay(500);
-      setLeftEyeColor(off); delay(500);
+
+      // Reduced delays for better responsiveness during testing
+      setLeftEyeColor(red); delay(300);
+      setLeftEyeColor(green); delay(300);
+      setLeftEyeColor(blue); delay(300);
+      setLeftEyeColor(off); delay(300);
     }
-    
+
     if (target == "right" || target == "both") {
       Serial.println("Testing right eye...");
       uint32_t red = Adafruit_NeoPixel::Color(255, 0, 0);
       uint32_t green = Adafruit_NeoPixel::Color(0, 255, 0);
       uint32_t blue = Adafruit_NeoPixel::Color(0, 0, 255);
       uint32_t white = Adafruit_NeoPixel::Color(255, 255, 255);
-      
-      setRightEyeColor(red); delay(500);
-      setRightEyeColor(green); delay(500);
-      setRightEyeColor(blue); delay(500);
+
+      // Reduced delays for better responsiveness during testing
+      setRightEyeColor(red); delay(300);
+      setRightEyeColor(green); delay(300);
+      setRightEyeColor(blue); delay(300);
       setRightEyeColor(white);
     }
     
@@ -1427,17 +1479,17 @@ void handleLEDCommand(String params) {
 void handleDetailCommand(String params) {
   if (params.length() == 0) {
     Serial.println("\n=== Detail LED Commands ===");
-    Serial.println("  detail show                     - Show current settings");
-    Serial.println("  detail count [1-8]              - Set number of active LEDs (default: 5)");
-    Serial.println("  detail brightness [0-255]       - Set brightness");
-    Serial.println("  detail color [r] [g] [b]        - Set RGB color (0-255 each)");
-    Serial.println("  detail pattern [name]           - Set animation pattern");
+    Serial.println(F("  detail show                     - Show current settings"));
+    Serial.println(F("  detail count [1-8]              - Set number of active LEDs (default: 5)"));
+    Serial.println(F("  detail brightness [0-255]       - Set brightness"));
+    Serial.println(F("  detail color [r] [g] [b]        - Set RGB color (0-255 each)"));
+    Serial.println(F("  detail pattern [name]           - Set animation pattern"));
     Serial.println("    Patterns: blink, fade, chase, pulse, random");
-    Serial.println("  detail on                       - Enable detail LEDs");
-    Serial.println("  detail off                      - Disable detail LEDs");
-    Serial.println("  detail auto [on/off]            - Auto color based on mode");
-    Serial.println("  detail test                     - Run test sequence");
-    Serial.println("===========================\n");
+    Serial.println(F("  detail on                       - Enable detail LEDs"));
+    Serial.println(F("  detail off                      - Disable detail LEDs"));
+    Serial.println(F("  detail auto [on/off]            - Auto color based on mode"));
+    Serial.println(F("  detail test                     - Run test sequence"));
+    Serial.println(F("===========================\n"));
     return;
   }
 
@@ -1509,32 +1561,33 @@ void handleDetailCommand(String params) {
   }
   else if (args[0] == "test") {
     Serial.println("\n=== Detail LED Test Sequence ===");
+    Serial.println("Running quick pattern tests (1s each)...");
 
-    // Test all patterns
+    // Test all patterns with reduced delays for better responsiveness
     Serial.println("Testing BLINK pattern (red)...");
     setDetailColor(255, 0, 0);
     startDetailBlink();
-    delay(2000);
+    delay(1000);  // Reduced from 2000ms
 
     Serial.println("Testing FADE pattern (green)...");
     setDetailColor(0, 255, 0);
     startDetailFade();
-    delay(2000);
+    delay(1000);  // Reduced from 2000ms
 
     Serial.println("Testing PULSE pattern (blue)...");
     setDetailColor(0, 0, 255);
     startDetailPulse();
-    delay(2000);
+    delay(1000);  // Reduced from 2000ms
 
     Serial.println("Testing CHASE pattern (yellow)...");
     setDetailColor(255, 255, 0);
     startDetailChase();
-    delay(2000);
+    delay(1000);  // Reduced from 2000ms
 
     Serial.println("Testing RANDOM pattern (purple)...");
     setDetailColor(255, 0, 255);
     startDetailRandom();
-    delay(2000);
+    delay(1000);  // Reduced from 2000ms
 
     // Return to default
     Serial.println("Returning to default (red blink)...");
@@ -1547,15 +1600,322 @@ void handleDetailCommand(String params) {
   }
 }
 
+//========================================
+// WIFI CONFIGURATION COMMAND HANDLER
+//========================================
+
+void handleWiFiCommand(String params) {
+  if (params.length() == 0) {
+    Serial.println(F("\n=== WiFi Configuration ==="));
+    Serial.println(F("  wifi set <ssid> <password>  - Configure WiFi credentials"));
+    Serial.println(F("  wifi show                   - Show current WiFi settings"));
+    Serial.println(F("  wifi reset                  - Clear WiFi configuration"));
+    Serial.println(F("  wifi reconnect              - Reconnect to WiFi"));
+    Serial.println(F("===========================\n"));
+    return;
+  }
+
+  String args[3];
+  int argCount = 0;
+  int startIdx = 0;
+
+  // Parse command and arguments
+  for (int i = 0; i <= params.length() && argCount < 3; i++) {
+    if (i == params.length() || params[i] == ' ') {
+      if (i > startIdx) {
+        args[argCount++] = params.substring(startIdx, i);
+      }
+      startIdx = i + 1;
+    }
+  }
+
+  String subCmd = args[0];
+  subCmd.toLowerCase();
+
+  if (subCmd == "show") {
+    Serial.println(F("\n=== WiFi Configuration ==="));
+    if (config.wifiConfigured && strlen(config.wifiSSID) > 0) {
+      Serial.print(F("SSID: "));
+      Serial.println(config.wifiSSID);
+      Serial.print(F("Password: "));
+      // Show masked password
+      for (int i = 0; i < strlen(config.wifiPassword); i++) {
+        Serial.print('*');
+      }
+      Serial.println();
+      Serial.println(F("Source: EEPROM (configured via serial)"));
+    }
+    else if (strcmp(WIFI_SSID, "YOUR_WIFI_SSID") != 0 && strcmp(WIFI_SSID, "Your Homewifi SSID") != 0) {
+      Serial.print(F("SSID: "));
+      Serial.println(WIFI_SSID);
+      Serial.println(F("Password: ********"));
+      Serial.println(F("Source: config.h (fallback)"));
+    }
+    else {
+      Serial.println(F("WiFi not configured"));
+      Serial.println(F("Use 'wifi set <ssid> <password>' to configure"));
+    }
+
+    Serial.print(F("Status: "));
+    if (WiFi.status() == WL_CONNECTED) {
+      Serial.println(F("Connected"));
+      Serial.print(F("IP Address: "));
+      Serial.println(WiFi.localIP());
+      Serial.print(F("mDNS: http://k2so.local"));
+    } else {
+      Serial.println(F("Disconnected"));
+    }
+    Serial.println(F("===========================\n"));
+  }
+  else if (subCmd == "set") {
+    if (argCount < 3) {
+      Serial.println(F("Usage: wifi set <ssid> <password>"));
+      Serial.println(F("Example: wifi set MyNetwork MyPassword123"));
+      return;
+    }
+
+    // Reconstruct password (in case it has spaces)
+    String ssid = args[1];
+    String password = args[2];
+
+    // Check length limits
+    if (ssid.length() >= sizeof(config.wifiSSID)) {
+      Serial.printf("Error: SSID too long (max %d characters)\n", sizeof(config.wifiSSID) - 1);
+      return;
+    }
+    if (password.length() >= sizeof(config.wifiPassword)) {
+      Serial.printf("Error: Password too long (max %d characters)\n", sizeof(config.wifiPassword) - 1);
+      return;
+    }
+
+    // Save to config
+    strncpy(config.wifiSSID, ssid.c_str(), sizeof(config.wifiSSID) - 1);
+    config.wifiSSID[sizeof(config.wifiSSID) - 1] = '\0';
+
+    strncpy(config.wifiPassword, password.c_str(), sizeof(config.wifiPassword) - 1);
+    config.wifiPassword[sizeof(config.wifiPassword) - 1] = '\0';
+
+    config.wifiConfigured = true;
+
+    Serial.println(F("\n=== WiFi Configuration Saved ==="));
+    Serial.print(F("SSID: "));
+    Serial.println(config.wifiSSID);
+    Serial.println(F("Password: ********"));
+    Serial.println(F("Saved to EEPROM"));
+
+    smartSaveToEEPROM();
+
+    Serial.println(F("\nUse 'wifi reconnect' or restart to apply changes."));
+    Serial.println(F("================================\n"));
+  }
+  else if (subCmd == "reset") {
+    Serial.print(F("Clear WiFi configuration? Type 'YES' to confirm: "));
+    while (!Serial.available()) { delay(10); }
+    String confirmation = Serial.readStringUntil('\n');
+    confirmation.trim();
+
+    if (confirmation == "YES") {
+      strcpy(config.wifiSSID, "");
+      strcpy(config.wifiPassword, "");
+      config.wifiConfigured = false;
+
+      smartSaveToEEPROM();
+
+      Serial.println(F("WiFi configuration cleared."));
+      Serial.println(F("Disconnecting WiFi..."));
+      WiFi.disconnect();
+      statusLEDWiFiDisconnected();
+    } else {
+      Serial.println(F("Operation cancelled."));
+    }
+  }
+  else if (subCmd == "reconnect") {
+    Serial.println(F("Reconnecting to WiFi..."));
+    WiFi.disconnect();
+    delay(500);
+
+    // Call the WiFi init function from main .ino (need to declare it extern)
+    extern void initializeWiFi();
+    extern void setupWebServer();
+
+    initializeWiFi();
+    setupWebServer();
+  }
+  else {
+    Serial.println(F("Invalid wifi command. Type 'wifi' for help."));
+  }
+}
+
+//========================================
+// ACCESS POINT (AP) CONFIGURATION COMMAND HANDLER
+//========================================
+void handleAPCommand(String params) {
+  if (params.length() == 0) {
+    Serial.println(F("\n=== Access Point Configuration ==="));
+    Serial.println(F("  ap set <ssid> <password>    - Configure AP credentials (password min 8 chars)"));
+    Serial.println(F("  ap show                     - Show current AP settings"));
+    Serial.println(F("  ap reset                    - Reset to default AP settings"));
+    Serial.println(F("  ap enable                   - Enable AP mode fallback"));
+    Serial.println(F("  ap disable                  - Disable AP mode fallback"));
+    Serial.println(F("  ap start                    - Start AP mode now"));
+    Serial.println(F("===================================\n"));
+    return;
+  }
+
+  String args[3];
+  int argCount = 0;
+  int startIdx = 0;
+
+  // Parse command and arguments
+  for (int i = 0; i <= params.length() && argCount < 3; i++) {
+    if (i == params.length() || params[i] == ' ') {
+      if (i > startIdx) {
+        args[argCount++] = params.substring(startIdx, i);
+      }
+      startIdx = i + 1;
+    }
+  }
+
+  String subCmd = args[0];
+  subCmd.toLowerCase();
+
+  if (subCmd == "show") {
+    Serial.println(F("\n=== Access Point Configuration ==="));
+    if (config.apConfigured && strlen(config.apSSID) > 0) {
+      Serial.print(F("AP SSID: "));
+      Serial.println(config.apSSID);
+      Serial.print(F("AP Password: "));
+      // Show masked password
+      for (int i = 0; i < strlen(config.apPassword); i++) {
+        Serial.print('*');
+      }
+      Serial.println();
+      Serial.println(F("Source: EEPROM (configured via serial)"));
+    } else {
+      // Show default AP settings
+      Serial.println(F("Using default AP settings:"));
+      String defaultAPName = "K2SO-" + WiFi.macAddress().substring(12);
+      defaultAPName.replace(":", "");
+      Serial.print(F("AP SSID: "));
+      Serial.println(defaultAPName);
+      Serial.println(F("AP Password: k2so2024 (default)"));
+      Serial.println(F("Use 'ap set <ssid> <password>' to customize"));
+    }
+
+    Serial.print(F("AP Mode: "));
+    Serial.println(config.apEnabled ? F("Enabled (fallback)") : F("Disabled"));
+
+    Serial.print(F("Status: "));
+    if (WiFi.getMode() == WIFI_AP || WiFi.getMode() == WIFI_AP_STA) {
+      Serial.println(F("AP Active"));
+      Serial.print(F("AP IP Address: "));
+      Serial.println(WiFi.softAPIP());
+      Serial.print(F("Connected clients: "));
+      Serial.println(WiFi.softAPgetStationNum());
+    } else {
+      Serial.println(F("AP Inactive"));
+    }
+    Serial.println(F("===================================\n"));
+  }
+  else if (subCmd == "set") {
+    if (argCount < 3) {
+      Serial.println(F("Usage: ap set <ssid> <password>"));
+      Serial.println(F("Example: ap set K2SO-Droid MySecurePass123"));
+      Serial.println(F("Note: Password must be at least 8 characters for WPA2"));
+      return;
+    }
+
+    String ssid = args[1];
+    String password = args[2];
+
+    // Validate password length (WPA2 requirement)
+    if (password.length() < 8) {
+      Serial.println(F("Error: Password must be at least 8 characters for WPA2"));
+      return;
+    }
+
+    // Check length limits
+    if (ssid.length() >= sizeof(config.apSSID)) {
+      Serial.printf("Error: SSID too long (max %d characters)\n", sizeof(config.apSSID) - 1);
+      return;
+    }
+    if (password.length() >= sizeof(config.apPassword)) {
+      Serial.printf("Error: Password too long (max %d characters)\n", sizeof(config.apPassword) - 1);
+      return;
+    }
+
+    // Save to config
+    strncpy(config.apSSID, ssid.c_str(), sizeof(config.apSSID) - 1);
+    config.apSSID[sizeof(config.apSSID) - 1] = '\0';
+
+    strncpy(config.apPassword, password.c_str(), sizeof(config.apPassword) - 1);
+    config.apPassword[sizeof(config.apPassword) - 1] = '\0';
+
+    config.apConfigured = true;
+
+    Serial.println(F("\n=== AP Configuration Saved ==="));
+    Serial.print(F("AP SSID: "));
+    Serial.println(config.apSSID);
+    Serial.println(F("AP Password: ********"));
+    Serial.println(F("Saved to EEPROM"));
+
+    smartSaveToEEPROM();
+
+    Serial.println(F("\nAP will use these settings on next activation."));
+    Serial.println(F("Use 'ap start' to activate AP mode now."));
+    Serial.println(F("===============================\n"));
+  }
+  else if (subCmd == "reset") {
+    Serial.print(F("Reset AP configuration to defaults? Type 'YES' to confirm: "));
+    while (!Serial.available()) { delay(10); }
+    String confirmation = Serial.readStringUntil('\n');
+    confirmation.trim();
+
+    if (confirmation == "YES") {
+      strcpy(config.apSSID, "");
+      strcpy(config.apPassword, "");
+      config.apConfigured = false;
+
+      smartSaveToEEPROM();
+
+      Serial.println(F("AP configuration reset to defaults."));
+      Serial.println(F("Default AP will be K2SO-XXXXXX with password: k2so2024"));
+    } else {
+      Serial.println(F("Operation cancelled."));
+    }
+  }
+  else if (subCmd == "enable") {
+    config.apEnabled = true;
+    smartSaveToEEPROM();
+    Serial.println(F("AP mode fallback enabled."));
+    Serial.println(F("AP will start automatically if WiFi connection fails."));
+  }
+  else if (subCmd == "disable") {
+    config.apEnabled = false;
+    smartSaveToEEPROM();
+    Serial.println(F("AP mode fallback disabled."));
+  }
+  else if (subCmd == "start") {
+    Serial.println(F("Starting Access Point mode..."));
+
+    // Declare external function
+    extern void startAccessPoint();
+    startAccessPoint();
+  }
+  else {
+    Serial.println(F("Invalid ap command. Type 'ap' for help."));
+  }
+}
+
 void handleTimingCommand(String params) {
   if (params.length() == 0) {
     Serial.println("Timing commands:");
-    Serial.println("  timing scan move [min] [max]  - Set scan eye movement timing");
-    Serial.println("  timing scan wait [min] [max]  - Set scan eye wait timing");
-    Serial.println("  timing alert move [min] [max] - Set alert eye movement timing");
-    Serial.println("  timing alert wait [min] [max] - Set alert eye wait timing");
-    Serial.println("  timing sound [min] [max]      - Set sound pause timing");
-    Serial.println("  timing show                   - Show all timing settings");
+    Serial.println(F("  timing scan move [min] [max]  - Set scan eye movement timing"));
+    Serial.println(F("  timing scan wait [min] [max]  - Set scan eye wait timing"));
+    Serial.println(F("  timing alert move [min] [max] - Set alert eye movement timing"));
+    Serial.println(F("  timing alert wait [min] [max] - Set alert eye wait timing"));
+    Serial.println(F("  timing sound [min] [max]      - Set sound pause timing"));
+    Serial.println(F("  timing show                   - Show all timing settings"));
     return;
   }
   
@@ -1616,11 +1976,11 @@ void handleTimingCommand(String params) {
 void handleProfileCommand(String params) {
   if (params.length() == 0) {
     Serial.println("Profile commands:");
-    Serial.println("  profile save [name]    - Save current settings as profile");
-    Serial.println("  profile load [0-4]     - Load saved profile");
-    Serial.println("  profile list           - List all profiles");
-    Serial.println("  profile delete [0-4]   - Delete profile");
-    Serial.println("  profile show [0-4]     - Show profile details");
+    Serial.println(F("  profile save [name]    - Save current settings as profile"));
+    Serial.println(F("  profile load [0-4]     - Load saved profile"));
+    Serial.println(F("  profile list           - List all profiles"));
+    Serial.println(F("  profile delete [0-4]   - Delete profile"));
+    Serial.println(F("  profile show [0-4]     - Show profile details"));
     return;
   }
   
@@ -1749,43 +2109,47 @@ void handleProfileCommand(String params) {
 void showHelp() {
   Serial.println("\n=== K-2SO COMMAND REFERENCE ===");
   Serial.println("\nBASIC:");
-  Serial.println("  help      - Show this help");
-  Serial.println("  status    - System status and statistics");
-  Serial.println("  config    - Show current configuration");
-  Serial.println("  save      - Save current settings to EEPROM");
-  Serial.println("  reset     - Restart the system");
+  Serial.println(F("  help      - Show this help"));
+  Serial.println(F("  status    - System status and statistics"));
+  Serial.println(F("  config    - Show current configuration"));
+  Serial.println(F("  save      - Save current settings to EEPROM"));
+  Serial.println(F("  reset     - Restart the system"));
   
   Serial.println("\nMODES:");
-  Serial.println("  mode [scanning/alert/idle] - Change personality mode");
+  Serial.println(F("  mode [scanning/alert/idle] - Change personality mode"));
   
   Serial.println("\nIR CONTROL:");
-  Serial.println("  learn     - Program IR remote buttons");
-  Serial.println("  scan      - IR code scanner mode");
-  Serial.println("  show      - Show programmed IR codes");
-  Serial.println("  clear     - Clear all IR codes (requires confirmation)");
-  Serial.println("  default   - Load standard IR remote codes");
-  Serial.println("  ir on/off - Enable/disable IR receiver");
+  Serial.println(F("  learn     - Program IR remote buttons"));
+  Serial.println(F("  scan      - IR code scanner mode"));
+  Serial.println(F("  show      - Show programmed IR codes"));
+  Serial.println(F("  clear     - Clear all IR codes (requires confirmation)"));
+  Serial.println(F("  default   - Load standard IR remote codes"));
+  Serial.println(F("  ir on/off - Enable/disable IR receiver"));
   
   Serial.println("\nHARDWARE CONFIGURATION:");
-  Serial.println("  servo [options]  - Configure servo settings");
-  Serial.println("  led [options]    - Configure LED settings (eyes + status)");
-  Serial.println("  detail [options] - Configure detail LEDs (WS2812 strip)");
-  Serial.println("  sound [options]  - Configure audio settings");
-  Serial.println("  timing [options] - Configure movement timing");
+  Serial.println(F("  servo [options]  - Configure servo settings"));
+  Serial.println(F("  led [options]    - Configure LED settings (eyes + status)"));
+  Serial.println(F("  detail [options] - Configure detail LEDs (WS2812 strip)"));
+  Serial.println(F("  sound [options]  - Configure audio settings"));
+  Serial.println(F("  timing [options] - Configure movement timing"));
   
   Serial.println("\nPROFILE MANAGEMENT:");
-  Serial.println("  profile save [name]  - Save current settings as profile");
-  Serial.println("  profile load [index] - Load saved profile (0-4)");
-  Serial.println("  profile list         - List all profiles");
-  Serial.println("  profile delete [idx] - Delete profile");
+  Serial.println(F("  profile save [name]  - Save current settings as profile"));
+  Serial.println(F("  profile load [index] - Load saved profile (0-4)"));
+  Serial.println(F("  profile list         - List all profiles"));
+  Serial.println(F("  profile delete [idx] - Delete profile"));
   
+  Serial.println("\nNETWORK CONFIGURATION:");
+  Serial.println(F("  wifi [options]  - Configure WiFi connection"));
+  Serial.println(F("  ap [options]    - Configure Access Point mode"));
+
   Serial.println("\nSYSTEM TOOLS:");
-  Serial.println("  monitor   - Live system monitoring mode");
-  Serial.println("  test      - Hardware test sequence");
-  Serial.println("  demo      - Comprehensive demo of all features");
-  Serial.println("  backup    - Export configuration as hex");
-  Serial.println("  restore   - Import configuration from hex");
-  Serial.println("  exit      - Exit special modes");
+  Serial.println(F("  monitor   - Live system monitoring mode"));
+  Serial.println(F("  test      - Hardware test sequence"));
+  Serial.println(F("  demo      - Comprehensive demo of all features"));
+  Serial.println(F("  backup    - Export configuration as hex"));
+  Serial.println(F("  restore   - Import configuration from hex"));
+  Serial.println(F("  exit      - Exit special modes"));
 
   Serial.println("\nIR REMOTE BUTTONS:");
   Serial.println("  1-3: Personality modes (Scanning, Alert, Idle)");
@@ -1929,7 +2293,8 @@ void loadDefaultCodes() {
   };
   
   for (int i = 0; i < 17; i++) {
-    strcpy(config.buttons[i].name, standard17Buttons[i]);
+    strncpy(config.buttons[i].name, standard17Buttons[i], sizeof(config.buttons[i].name) - 1);
+    config.buttons[i].name[sizeof(config.buttons[i].name) - 1] = '\0';  // Ensure null termination
     config.buttons[i].code = defaultCodes[i];
     config.buttons[i].isConfigured = true;
   }
@@ -1940,7 +2305,7 @@ void loadDefaultCodes() {
 }
 
 void clearAllData() {
-  Serial.println("WARNING: This will erase ALL configuration data!");
+  Serial.println(F("WARNING:"));
   Serial.println("All servo calibration, IR codes, profiles, and settings will be lost.");
   Serial.print("Are you absolutely sure? Type 'YES' to confirm: ");
   
@@ -2152,7 +2517,7 @@ void handleTestMode() {
       
     case 10:
       if (currentMillis - testTimer > 3000) {
-        Serial.println("=== Hardware Test Complete ===");
+        Serial.println(F("=== Hardware Test Complete ==="));
         Serial.println("All systems tested successfully!");
         operatingMode = MODE_NORMAL;
         autoUpdateStatusLED(); // NEW: Return to normal status
@@ -2674,7 +3039,7 @@ void handleBootSequence(unsigned long currentMillis) {
       // Pupil flickers to life, then ring, then both brighten
 
       case 0:
-        Serial.println("Boot: Initializing eyes...");
+        Serial.println(F("Boot:"));
         // Complete darkness
         leftEye.clear();
         rightEye.clear();
@@ -2685,7 +3050,7 @@ void handleBootSequence(unsigned long currentMillis) {
 
       // === PUPIL FLICKERING (POWER SURGES) ===
       case 1:
-        Serial.println("Boot: Pupil power surge 1");
+        Serial.println(F("Boot:"));
         // First flicker - weak pulse
         {
           uint32_t weakPulse = Adafruit_NeoPixel::Color(10, 15, 18);
@@ -2707,7 +3072,7 @@ void handleBootSequence(unsigned long currentMillis) {
         break;
 
       case 3:
-        Serial.println("Boot: Pupil power surge 2");
+        Serial.println(F("Boot:"));
         // Second flicker - stronger
         {
           uint32_t strongerPulse = Adafruit_NeoPixel::Color(25, 35, 40);
@@ -2729,7 +3094,7 @@ void handleBootSequence(unsigned long currentMillis) {
         break;
 
       case 5:
-        Serial.println("Boot: Pupil stabilizing");
+        Serial.println(F("Boot:"));
         // Third pulse - stabilizing
         {
           uint32_t stable = Adafruit_NeoPixel::Color(40, 55, 65);
@@ -2755,7 +3120,7 @@ void handleBootSequence(unsigned long currentMillis) {
 
       // === RING STARTS FLICKERING ===
       case 7:
-        Serial.println("Boot: Ring power surge 1");
+        Serial.println(F("Boot:"));
         // Ring first flicker - very weak
         {
           uint32_t pupil = Adafruit_NeoPixel::Color(55, 75, 90);
@@ -2792,7 +3157,7 @@ void handleBootSequence(unsigned long currentMillis) {
         break;
 
       case 9:
-        Serial.println("Boot: Ring power surge 2");
+        Serial.println(F("Boot:"));
         // Ring second flicker - stronger
         {
           uint32_t pupil = Adafruit_NeoPixel::Color(60, 80, 95);
@@ -2829,7 +3194,7 @@ void handleBootSequence(unsigned long currentMillis) {
         break;
 
       case 11:
-        Serial.println("Boot: Ring stabilizing");
+        Serial.println(F("Boot:"));
         // Ring stabilizes and stays on
         {
           uint32_t pupil = Adafruit_NeoPixel::Color(70, 95, 115);
@@ -2850,7 +3215,7 @@ void handleBootSequence(unsigned long currentMillis) {
 
       // === SCHNELLE BLITZER ===
       case 12:
-        Serial.println("Boot: Energy surge - Flash 1");
+        Serial.println(F("Boot:"));
         // Blitz 1 - Alle heller
         {
           uint32_t flashPupil = Adafruit_NeoPixel::Color(120, 160, 195);
@@ -2870,7 +3235,7 @@ void handleBootSequence(unsigned long currentMillis) {
         break;
 
       case 13:
-        // Zurück zu vorher
+        // Return to stable state
         {
           uint32_t pupil = Adafruit_NeoPixel::Color(70, 95, 115);
           uint32_t stableRing = Adafruit_NeoPixel::Color(25, 35, 45);
@@ -2889,7 +3254,7 @@ void handleBootSequence(unsigned long currentMillis) {
         break;
 
       case 14:
-        Serial.println("Boot: Energy surge - Flash 2");
+        Serial.println(F("Boot:"));
         // Blitz 2
         {
           uint32_t flashPupil = Adafruit_NeoPixel::Color(120, 160, 195);
@@ -2909,7 +3274,7 @@ void handleBootSequence(unsigned long currentMillis) {
         break;
 
       case 15:
-        // Zurück
+        // Return to previous state
         {
           uint32_t pupil = Adafruit_NeoPixel::Color(70, 95, 115);
           uint32_t stableRing = Adafruit_NeoPixel::Color(25, 35, 45);
@@ -2928,7 +3293,7 @@ void handleBootSequence(unsigned long currentMillis) {
         break;
 
       case 16:
-        Serial.println("Boot: Energy surge - Flash 3");
+        Serial.println(F("Boot:"));
         // Blitz 3
         {
           uint32_t flashPupil = Adafruit_NeoPixel::Color(120, 160, 195);
@@ -2949,7 +3314,7 @@ void handleBootSequence(unsigned long currentMillis) {
 
       // === BOTH BRIGHTEN TOGETHER ===
       case 17:
-        Serial.println("Boot: Power increasing");
+        Serial.println(F("Boot:"));
         // 50% power
         {
           uint32_t pupil = Adafruit_NeoPixel::Color(90, 120, 145);
@@ -2989,7 +3354,7 @@ void handleBootSequence(unsigned long currentMillis) {
 
       // === ROTATING RING EFFECT ===
       case 19:
-        Serial.println("Boot: Ring calibration");
+        Serial.println(F("Boot:"));
         // Ring rotation - Position 0 (LEDs 1,3,5,7,9,11 an)
         {
           uint32_t pupil = Adafruit_NeoPixel::Color(115, 150, 185);
@@ -3090,7 +3455,7 @@ void handleBootSequence(unsigned long currentMillis) {
         break;
 
       case 23:
-        // 90% power - alle gleichmäßig
+        // 90% power - all LEDs evenly
         {
           uint32_t pupil = Adafruit_NeoPixel::Color(135, 180, 220);
           uint32_t ring = Adafruit_NeoPixel::Color(105, 140, 175);
@@ -3109,7 +3474,7 @@ void handleBootSequence(unsigned long currentMillis) {
         break;
 
       case 24:
-        Serial.println("Boot: Eyes fully online");
+        Serial.println(F("Boot:"));
         // Full power - 100% Ice Blue!
         setEyeColor(getIceBlue(), getIceBlue());
         bootSequenceStep++;
@@ -3124,7 +3489,7 @@ void handleBootSequence(unsigned long currentMillis) {
           const uint8_t maxAttempts = 10;  // Try up to 10 times (3 seconds total)
 
           if (!messagePrinted) {
-            Serial.println("Boot: Playing startup sound");
+            Serial.println(F("Boot:"));
             Serial.printf("  isAudioReady = %s\n", isAudioReady ? "TRUE" : "FALSE");
             messagePrinted = true;
           }
@@ -3174,14 +3539,14 @@ void handleBootSequence(unsigned long currentMillis) {
 
       case 26:
         // Center servos after eyes are awake and sound has played
-        Serial.println("Boot: Initializing servos");
+        Serial.println(F("Boot:"));
         centerAllServos();
         bootSequenceStep++;
         break;
 
       case 27:
         // Final setup - boot complete
-        Serial.println("Boot: Systems online");
+        Serial.println(F("Boot:"));
         isAwake = true;
         lastActivityTime = millis();
         bootSequenceComplete = true;
@@ -3247,12 +3612,17 @@ void loadConfiguration() {
     config.soundPauseMax = 20000;
     config.bootSequenceDelay = 600;  // Slower for dramatic flickering effect
     
+    // Default WiFi settings (empty - must be configured via serial)
+    strcpy(config.wifiSSID, "");
+    strcpy(config.wifiPassword, "");
+    config.wifiConfigured = false;
+
     // Default settings
     config.savedVolume = 20;
     config.savedMode = MODE_SCANNING;
     config.irEnabled = true;
     config.currentProfile = 255;
-    
+
     needsDefaults = true;
     saveConfiguration();
   }
@@ -3281,9 +3651,27 @@ void saveConfiguration() {
   config.writeCount++;
   config.checksum = 0;
   config.checksum = calculateChecksum();
-  EEPROM.put(0, config);
+
+  // Optimized byte-level EEPROM writing
+  // Only write bytes that have actually changed to reduce EEPROM wear
+  uint8_t* configBytes = (uint8_t*)&config;
+  uint8_t* lastSavedBytes = (uint8_t*)&lastSavedConfig;
+  size_t bytesWritten = 0;
+
+  for (size_t i = 0; i < sizeof(config); i++) {
+    if (configBytes[i] != lastSavedBytes[i]) {
+      EEPROM.write(i, configBytes[i]);
+      bytesWritten++;
+    }
+  }
+
   EEPROM.commit();
   memcpy(&lastSavedConfig, &config, sizeof(config));
+
+  // Log how many bytes were actually written
+  Serial.printf("EEPROM: %u/%u bytes written (%.1f%% reduction)\n",
+                bytesWritten, sizeof(config),
+                100.0 * (1.0 - (float)bytesWritten / sizeof(config)));
 }
 
 void smartSaveToEEPROM() {
@@ -3339,7 +3727,7 @@ uint32_t calculateChecksum() {
 void backupToSerial() {
   Serial.println("\n=== CONFIGURATION BACKUP ===");
   Serial.println("Copy the following data to save your configuration:");
-  Serial.println("=== BACKUP START ===");
+  Serial.println(F("=== BACKUP START ==="));
   
   uint8_t* data = (uint8_t*)&config;
   for (size_t i = 0; i < sizeof(config); i++) {
@@ -3355,7 +3743,7 @@ void backupToSerial() {
 
 void restoreFromSerial() {
   Serial.println("\n=== CONFIGURATION RESTORE ===");
-  Serial.println("WARNING: This will overwrite your current configuration!");
+  Serial.println(F("WARNING:"));
   Serial.print("Continue? Type 'YES' to proceed: ");
   
   while (!Serial.available()) { delay(10); }
@@ -3395,7 +3783,7 @@ void restoreFromSerial() {
     applyConfiguration();
     
     Serial.println("Configuration restored successfully!");
-    Serial.println("System will restart to apply changes...");
+    Serial.println(F("System"));
     delay(2000);
     ESP.restart();
   } else {

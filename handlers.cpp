@@ -1231,48 +1231,42 @@ void handleServoCommand(String params) {
   }
   else if (args[0] == "test") {
     if (argCount < 2 || args[1] == "all") {
-      Serial.println(F("Quick servo test - for full non-blocking test, use 'test' command"));
-      Serial.println(F("Testing all servos..."));
-
-      // Quick test with reduced delays to minimize blocking
+      Serial.println("Testing all servos...");
       centerAllServos();
-      unsigned long testDelay = 300; // Reduced from 1000ms to 300ms
-
-      // Test eye servos - min position
+      delay(1000);
+      
+      // Test eye servos
       eyePan.targetPosition = eyePan.minRange;
       eyeTilt.targetPosition = eyeTilt.minRange;
       eyePanServo.write(eyePan.targetPosition);
       eyeTiltServo.write(eyeTilt.targetPosition);
-      statusLEDServoActivity();
-      delay(testDelay);
-
-      // Test eye servos - max position
+      statusLEDServoActivity(); // NEW: Flash blue for servo
+      delay(1000);
+      
       eyePan.targetPosition = eyePan.maxRange;
       eyeTilt.targetPosition = eyeTilt.maxRange;
       eyePanServo.write(eyePan.targetPosition);
       eyeTiltServo.write(eyeTilt.targetPosition);
-      statusLEDServoActivity();
-      delay(testDelay);
-
-      // Test head servos - min position
+      statusLEDServoActivity(); // NEW: Flash blue for servo
+      delay(1000);
+      
+      // Test head servos
       headPan.targetPosition = headPan.minRange;
       headTilt.targetPosition = headTilt.minRange;
       headPanServo.write(headPan.targetPosition);
       headTiltServo.write(headTilt.targetPosition);
-      statusLEDServoActivity();
-      delay(testDelay);
-
-      // Test head servos - max position
+      statusLEDServoActivity(); // NEW: Flash blue for servo
+      delay(1000);
+      
       headPan.targetPosition = headPan.maxRange;
       headTilt.targetPosition = headTilt.maxRange;
       headPanServo.write(headPan.targetPosition);
       headTiltServo.write(headTilt.targetPosition);
-      statusLEDServoActivity();
-      delay(testDelay);
-
+      statusLEDServoActivity(); // NEW: Flash blue for servo
+      delay(1000);
+      
       centerAllServos();
-      Serial.println(F("Quick servo test complete (1.2s blocked)"));
-      Serial.println(F("Tip: Use 'test' command for full non-blocking hardware test"));
+      Serial.println("Servo test complete");
     }
   }
 }
@@ -1798,7 +1792,7 @@ void handleAPCommand(String params) {
       defaultAPName.replace(":", "");
       Serial.print(F("AP SSID: "));
       Serial.println(defaultAPName);
-      Serial.println(F("AP Password: k2so2025 (default)"));
+      Serial.println(F("AP Password: k2so2024 (default)"));
       Serial.println(F("Use 'ap set <ssid> <password>' to customize"));
     }
 
@@ -1879,7 +1873,7 @@ void handleAPCommand(String params) {
       smartSaveToEEPROM();
 
       Serial.println(F("AP configuration reset to defaults."));
-      Serial.println(F("Default AP will be K2SO-XXXXXX with password: k2so2025"));
+      Serial.println(F("Default AP will be K2SO-XXXXXX with password: k2so2024"));
     } else {
       Serial.println(F("Operation cancelled."));
     }
@@ -3039,7 +3033,7 @@ void handleBootSequence(unsigned long currentMillis) {
       // Pupil flickers to life, then ring, then both brighten
 
       case 0:
-        Serial.println(F("Boot:"));
+        Serial.println(F("Boot: Initializing eye awakening sequence..."));
         // Complete darkness
         leftEye.clear();
         rightEye.clear();
@@ -3050,7 +3044,6 @@ void handleBootSequence(unsigned long currentMillis) {
 
       // === PUPIL FLICKERING (POWER SURGES) ===
       case 1:
-        Serial.println(F("Boot:"));
         // First flicker - weak pulse
         {
           uint32_t weakPulse = Adafruit_NeoPixel::Color(10, 15, 18);
@@ -3072,7 +3065,6 @@ void handleBootSequence(unsigned long currentMillis) {
         break;
 
       case 3:
-        Serial.println(F("Boot:"));
         // Second flicker - stronger
         {
           uint32_t strongerPulse = Adafruit_NeoPixel::Color(25, 35, 40);
@@ -3094,7 +3086,6 @@ void handleBootSequence(unsigned long currentMillis) {
         break;
 
       case 5:
-        Serial.println(F("Boot:"));
         // Third pulse - stabilizing
         {
           uint32_t stable = Adafruit_NeoPixel::Color(40, 55, 65);
@@ -3120,7 +3111,7 @@ void handleBootSequence(unsigned long currentMillis) {
 
       // === RING STARTS FLICKERING ===
       case 7:
-        Serial.println(F("Boot:"));
+        Serial.println(F("Boot: Ring LED activation..."));
         // Ring first flicker - very weak
         {
           uint32_t pupil = Adafruit_NeoPixel::Color(55, 75, 90);
@@ -3157,7 +3148,6 @@ void handleBootSequence(unsigned long currentMillis) {
         break;
 
       case 9:
-        Serial.println(F("Boot:"));
         // Ring second flicker - stronger
         {
           uint32_t pupil = Adafruit_NeoPixel::Color(60, 80, 95);
@@ -3194,7 +3184,6 @@ void handleBootSequence(unsigned long currentMillis) {
         break;
 
       case 11:
-        Serial.println(F("Boot:"));
         // Ring stabilizes and stays on
         {
           uint32_t pupil = Adafruit_NeoPixel::Color(70, 95, 115);
@@ -3215,7 +3204,6 @@ void handleBootSequence(unsigned long currentMillis) {
 
       // === SCHNELLE BLITZER ===
       case 12:
-        Serial.println(F("Boot:"));
         // Blitz 1 - Alle heller
         {
           uint32_t flashPupil = Adafruit_NeoPixel::Color(120, 160, 195);
@@ -3235,7 +3223,7 @@ void handleBootSequence(unsigned long currentMillis) {
         break;
 
       case 13:
-        // Return to stable state
+        // Zurück zu vorher
         {
           uint32_t pupil = Adafruit_NeoPixel::Color(70, 95, 115);
           uint32_t stableRing = Adafruit_NeoPixel::Color(25, 35, 45);
@@ -3254,7 +3242,6 @@ void handleBootSequence(unsigned long currentMillis) {
         break;
 
       case 14:
-        Serial.println(F("Boot:"));
         // Blitz 2
         {
           uint32_t flashPupil = Adafruit_NeoPixel::Color(120, 160, 195);
@@ -3274,7 +3261,7 @@ void handleBootSequence(unsigned long currentMillis) {
         break;
 
       case 15:
-        // Return to previous state
+        // Zurück
         {
           uint32_t pupil = Adafruit_NeoPixel::Color(70, 95, 115);
           uint32_t stableRing = Adafruit_NeoPixel::Color(25, 35, 45);
@@ -3293,7 +3280,6 @@ void handleBootSequence(unsigned long currentMillis) {
         break;
 
       case 16:
-        Serial.println(F("Boot:"));
         // Blitz 3
         {
           uint32_t flashPupil = Adafruit_NeoPixel::Color(120, 160, 195);
@@ -3314,7 +3300,6 @@ void handleBootSequence(unsigned long currentMillis) {
 
       // === BOTH BRIGHTEN TOGETHER ===
       case 17:
-        Serial.println(F("Boot:"));
         // 50% power
         {
           uint32_t pupil = Adafruit_NeoPixel::Color(90, 120, 145);
@@ -3354,7 +3339,6 @@ void handleBootSequence(unsigned long currentMillis) {
 
       // === ROTATING RING EFFECT ===
       case 19:
-        Serial.println(F("Boot:"));
         // Ring rotation - Position 0 (LEDs 1,3,5,7,9,11 an)
         {
           uint32_t pupil = Adafruit_NeoPixel::Color(115, 150, 185);
@@ -3455,7 +3439,7 @@ void handleBootSequence(unsigned long currentMillis) {
         break;
 
       case 23:
-        // 90% power - all LEDs evenly
+        // 90% power - alle gleichmäßig
         {
           uint32_t pupil = Adafruit_NeoPixel::Color(135, 180, 220);
           uint32_t ring = Adafruit_NeoPixel::Color(105, 140, 175);
@@ -3474,7 +3458,7 @@ void handleBootSequence(unsigned long currentMillis) {
         break;
 
       case 24:
-        Serial.println(F("Boot:"));
+        Serial.println(F("Boot: Eyes at full power - Ice Blue activated"));
         // Full power - 100% Ice Blue!
         setEyeColor(getIceBlue(), getIceBlue());
         bootSequenceStep++;
@@ -3489,7 +3473,7 @@ void handleBootSequence(unsigned long currentMillis) {
           const uint8_t maxAttempts = 10;  // Try up to 10 times (3 seconds total)
 
           if (!messagePrinted) {
-            Serial.println(F("Boot:"));
+            Serial.println(F("Boot: Checking audio system..."));
             Serial.printf("  isAudioReady = %s\n", isAudioReady ? "TRUE" : "FALSE");
             messagePrinted = true;
           }
@@ -3539,14 +3523,13 @@ void handleBootSequence(unsigned long currentMillis) {
 
       case 26:
         // Center servos after eyes are awake and sound has played
-        Serial.println(F("Boot:"));
+        Serial.println(F("Boot: Centering servos..."));
         centerAllServos();
         bootSequenceStep++;
         break;
 
       case 27:
         // Final setup - boot complete
-        Serial.println(F("Boot:"));
         isAwake = true;
         lastActivityTime = millis();
         bootSequenceComplete = true;
@@ -3630,11 +3613,67 @@ void loadConfiguration() {
   uint32_t storedChecksum = config.checksum;
   config.checksum = 0;
   uint32_t calculatedChecksum = calculateChecksum();
-  
+
   if (storedChecksum != calculatedChecksum) {
     Serial.println("Configuration checksum mismatch, reloading defaults");
-    loadConfiguration();
-    return;
+
+    // Re-initialize with defaults instead of recursive call
+    memset(&config, 0, sizeof(config));
+    config.magic = (uint8_t)EEPROM_MAGIC;
+    config.version = 1;
+    config.writeCount = 0;
+
+    // Default servo positions
+    config.eyePanCenter = 90;
+    config.eyeTiltCenter = 90;
+    config.eyePanMin = 60;
+    config.eyePanMax = 120;
+    config.eyeTiltMin = 60;
+    config.eyeTiltMax = 120;
+
+    config.headPanCenter = 90;
+    config.headTiltCenter = 90;
+    config.headPanMin = 0;
+    config.headPanMax = 180;
+    config.headTiltMin = 0;
+    config.headTiltMax = 180;
+
+    // Default LED settings
+    config.eyeBrightness = DEFAULT_BRIGHTNESS;
+    config.ledEffectSpeed = 50;
+    config.eyeVersion = EYE_VERSION_13LED;  // Default to 13-LED eyes
+
+    // Default status LED settings
+    config.statusLedBrightness = STATUS_LED_BRIGHTNESS;
+    config.statusLedEnabled = true;
+
+    // Default timing
+    config.scanEyeMoveMin = 20;
+    config.scanEyeMoveMax = 40;
+    config.scanEyeWaitMin = 3000;
+    config.scanEyeWaitMax = 6000;
+    config.alertEyeMoveMin = 5;
+    config.alertEyeMoveMax = 15;
+    config.alertEyeWaitMin = 500;
+    config.alertEyeWaitMax = 1500;
+    config.soundPauseMin = 8000;
+    config.soundPauseMax = 20000;
+    config.bootSequenceDelay = 600;  // Slower for dramatic flickering effect
+
+    // Default WiFi settings (empty - must be configured via serial)
+    strcpy(config.wifiSSID, "");
+    strcpy(config.wifiPassword, "");
+    config.wifiConfigured = false;
+
+    // Default settings
+    config.savedVolume = 20;
+    config.savedMode = MODE_SCANNING;
+    config.irEnabled = true;
+    config.currentProfile = 255;
+
+    needsDefaults = true;
+    saveConfiguration();
+    Serial.println("Defaults loaded and saved after checksum mismatch");
   } else {
     Serial.printf("Configuration loaded (writes: %lu)\n", (unsigned long)config.writeCount);
   }

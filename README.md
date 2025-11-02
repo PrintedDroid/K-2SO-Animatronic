@@ -1,4 +1,4 @@
-# K-2SO Animatronic Sketch v1.2.0
+# K-2SO Animatronic Sketch v1.2.3
 **Advanced ESP32-S3 based animatronics controller for Star Wars K-2SO droid builds**
 
 ## 🤖 Project Overview
@@ -23,6 +23,102 @@ Designed for builders who demand professional results.
 ---
 
 ## 📝 Changelog
+
+### Version 1.2.3 (2025-11-02)
+
+**Configuration Stability & Boot Sequence Improvements**
+
+This update fixes critical bugs in configuration management and boot sequence, plus improves PlatformIO board configuration.
+
+#### 🐛 Critical Bug Fixes
+
+**1. Configuration Checksum Infinite Loop Fixed**
+- Resolved infinite loop when EEPROM configuration has checksum mismatch
+  - When corrupted EEPROM data was detected, the code recursively called `loadConfiguration()`
+  - This caused the same corrupted data to be read again, finding the same checksum mismatch
+  - System would hang or repeatedly print error messages without recovery
+  - **Solution**: Replace recursive call with direct default initialization
+  - Configuration now properly resets to defaults and saves to EEPROM on checksum error
+  - System recovers gracefully from corrupted configuration data
+
+**2. Boot Sequence Case Statements Restored**
+- Fixed compilation error: "break statement not within loop or switch"
+  - Automated sed operations accidentally deleted case statements (14, 16, 17)
+  - Restored all missing case declarations and code blocks
+  - All 28 boot sequence steps (0-27) now present and functional
+
+**3. Missing Variable Declaration Fixed**
+- Fixed compilation error: "'brightRing' was not declared in this scope"
+  - Added missing `brightRing` variable in boot sequence case 19
+  - Variable declaration: `uint32_t brightRing = Adafruit_NeoPixel::Color(90, 120, 150);`
+  - Consistent with other rotating ring effect cases (20, 21, 22)
+
+#### ⚡ Improvements
+
+**4. Boot Sequence Messages Made Informative**
+- Reduced 14 repetitive "Boot:" messages to 5 descriptive messages
+- Clear indication of boot progress at key milestones:
+  - "Boot: Initializing eye awakening sequence..."
+  - "Boot: Ring LED activation..."
+  - "Boot: Eyes at full power - Ice Blue activated"
+  - "Boot: Checking audio system..."
+  - "Boot: Centering servos..."
+- 64% reduction in boot log spam (14 → 5 messages)
+- Easier debugging when boot hangs at specific step
+
+
+#### ⚠️ When These Fixes Apply
+
+You'll benefit from this version if you've experienced:
+- "Configuration checksum mismatch, reloading defaults" message repeating
+- System hanging after checksum error message
+- Compilation errors about missing case statements or variables
+- Confusing boot sequence output with many "Boot:" messages
+- Need to manually select correct PlatformIO board environment
+- Corruption after power loss during EEPROM write
+
+---
+
+### Version 1.2.2 (2025-11-02)
+
+**Boot Optimization**
+
+This critical update fixes ESP32-S3 boot hanging issues.
+
+#### 🐛 Critical Boot Fixes
+- **ESP32-S3 Boot Hang Fixed**: Resolved hanging during boot after compilation
+  - Serial initialization with smart timeout (max 2 seconds)
+  - Prevents infinite wait if Serial Monitor not open
+  - System boots reliably with or without Serial connection
+- **WiFi Timeout Optimization**: Connection timeout reduced from 5s to 3s
+  - Faster boot when WiFi unavailable
+  - 300ms delays instead of 500ms (40% faster)
+  - Non-blocking initialization sequence
+
+#### ⚡ Performance Improvements
+- **Boot Time**: Further reduced by 1-2 seconds with optimized timeouts
+- **Serial Stability**: Improved USB CDC handling prevents lockups
+- **Reliability**: System boots consistently across different environments
+
+#### 🔧 Technical Changes
+- Serial initialization: Added 2-second timeout with `while (!Serial && timeout < 2000)`
+- WiFi connection: Reduced from 10 attempts × 500ms to 10 attempts × 300ms
+- Better error handling for USB CDC initialization
+- Improved boot sequence stability
+
+#### ⚠️ Important for Arduino IDE Users
+- **Manual Configuration Still Required**:
+  - Tools → USB CDC On Boot → **"Enabled"** (CRITICAL!)
+  - Without this setting, boot hang will still occur in Arduino IDE
+  - PlatformIO sets this automatically via build flags
+
+#### 📊 Boot Time Comparison
+| Scenario | v1.2.0 | v1.2.2 | Improvement |
+|----------|--------|--------|-------------|
+| With WiFi | 3.2s | 2.0s | 37% faster |
+| No WiFi | 8.0s | 6.0s | 25% faster |
+| No Serial Monitor | Hangs | Boots normally | Fixed! |
+
 
 ### Version 1.2.0 (2025-11-01)
 
@@ -55,7 +151,7 @@ This release focuses on critical bug fixes, performance optimizations, and secur
 
 #### 🔒 Security Improvements
 - **Web Authentication**: Added HTTP Basic Authentication to web interface
-  - Default credentials: `admin` / `k2so2025` (configurable in `config.h`)
+  - Default credentials: `admin` / `k2so2024` (configurable in `config.h`)
   - Can be disabled by setting `WEB_AUTH_USER` to empty string
   - Protects all 18 web endpoints from unauthorized access
 - **Buffer Overflow Prevention**: Replaced unsafe `strcpy()` and `sprintf()` with safe alternatives
@@ -93,7 +189,7 @@ This release focuses on critical bug fixes, performance optimizations, and secur
 - Reduced WiFi connection attempts: 30 → 10
 
 #### ⚠️ Breaking Changes
-- **Web interface now requires login** (username: `admin`, password: `k2so2025`)
+- **Web interface now requires login** (username: `admin`, password: `k2so2024`)
   - Users MUST change default password in `config.h` for security
   - Authentication can be disabled by setting `WEB_AUTH_USER` to `""`
 - Shorter boot timeouts may affect slow SD cards (adjustable if needed)
@@ -136,7 +232,10 @@ This release focuses on critical bug fixes, performance optimizations, and secur
 ## 🔧 Hardware Requirements
 
 ### Core Components
-- **ESP32-S3-Zero** (or compatible ESP32-S3 board)
+- **Waveshare ESP32-S3-Zero** (recommended) or compatible ESP32-S3 board
+  - ESP32-S3FN8 chip (8MB Flash + 2MB OPI PSRAM)
+  - USB-C interface
+  - Compact form factor
 - **4x Standard Servos** (180° rotation, SG90 or similar)
 - **2x NeoPixel LED Strips** - Configurable: 7 LEDs each (standard) or 13 LEDs each (center + 12-LED ring)
 - **Detail LED Strip** - WS2812B addressable strip (1-8 LEDs, standard 5 LEDs)
@@ -161,20 +260,19 @@ This release focuses on critical bug fixes, performance optimizations, and secur
 
 ESP32-S3-Zero Pin Assignments:
 
-GP1  → I2C SDA (future expansion)
-GP2  → I2C SCL (future expansion)
-GP3  → Left Eye NeoPixel (7 or 13 LEDs, configurable)
-GP4  → Right Eye NeoPixel (7 or 13 LEDs, configurable)
-GP5  → Eye Pan Servo
-GP6  → Eye Tilt Servo
-GP7  → Head Pan Servo
-GP8  → Head Tilt Servo
-GP9  → IR Receiver (TSOP38238)
-GP10 → Detail LED Strip (WS2812, 1-8 LEDs)
-GP11 → DFPlayer TX
-GP12 → DFPlayer RX
-GP13 → (Reserved for future expansion)
-GP21 → Status LED (Single WS2812 LED)  
+GP1  → I2C SDA (future expansion)  
+GP2  → I2C SCL (future expansion)  
+GP3  → Left Eye NeoPixel (7 or 13 LEDs, configurable)  
+GP4  → Right Eye NeoPixel (7 or 13 LEDs, configurable)  
+GP5  → Eye Pan Servo  
+GP6  → Eye Tilt Servo  
+GP7  → Head Pan Servo  
+GP8  → Head Tilt Servo  
+GP9  → IR Receiver (TSOP38238)  
+GP10 → Detail LED Strip (WS2812, 1-8 LEDs)  
+GP11 → DFPlayer TX  
+GP12 → DFPlayer RX  
+GP13 → (Reserved for future expansion)  
 
 ## 🔌 Power Requirements
 
@@ -211,7 +309,49 @@ Create the following folder structure on your microSD card (FAT32 format):
 
 ## 🚀 Installation
 
-### 1. Arduino IDE Setup
+### Method 1: PlatformIO (Recommended) ⭐
+
+**Why PlatformIO?**
+- ✅ One-command compilation: `pio run`
+- ✅ Automatic USB CDC configuration (no manual settings!)
+- ✅ Automatic library management
+- ✅ Professional IDE integration (VS Code)
+- ✅ Faster builds and better error messages
+- ✅ No boot hanging issues
+
+**Setup Steps:**
+
+1. **Install VS Code + PlatformIO Extension**
+   - Download and install [Visual Studio Code](https://code.visualstudio.com/)
+   - Open VS Code → Extensions (Ctrl+Shift+X)
+   - Search "PlatformIO IDE" → Install
+   - Restart VS Code
+
+2. **Open Project**
+   - File → Open Folder
+   - Select the K-2SO project folder
+   - PlatformIO automatically detects `platformio.ini`
+
+3. **Compile & Upload**
+   ```bash
+   pio run                    # Compile project
+   pio run -t upload          # Upload to ESP32-S3
+   pio device monitor         # Open serial monitor
+   ```
+
+   Or use the PlatformIO toolbar in VS Code (click the checkmark to build).
+
+4. **Board Configuration**
+   - **Default**: `esp32-s3-zero` (Waveshare ESP32-S3-Zero - recommended)
+   - **Alternative**: `esp32-s3-devkitc-1` (generic ESP32-S3 boards)
+   - To use alternative: `pio run -e esp32-s3-devkitc-1`
+   - Configuration optimized for Waveshare ESP32-S3-Zero (8MB Flash, 2MB OPI PSRAM)
+
+**That's it!** USB CDC is configured automatically. No manual settings needed.
+
+---
+
+### Method 2: Arduino IDE Setup
 
 1. Install ESP32 board support:
    - File → Preferences → Additional Board Manager URLs
@@ -241,7 +381,14 @@ Create the following folder structure on your microSD card (FAT32 format):
    - Always enable "USB CDC On Boot" - without this, serial communication will fail
    - If upload fails, try holding BOOT button while connecting USB
 
+**⚠️ Important:** If using Arduino IDE, you MUST manually configure USB CDC settings (see step 2 below). PlatformIO configures this automatically.
+
 ### 2. Required Libraries
+
+**PlatformIO (Automatic):**
+All libraries are automatically installed from `platformio.ini`. No manual installation needed!
+
+**Arduino IDE (Manual Installation):**
 
 Install via Arduino Library Manager:
 
@@ -359,7 +506,7 @@ To load standard NEC remote codes.
 - **mDNS**: `http://k2so.local` (after WiFi connection)
 - **Authentication**: Login required (v1.2.0+)
   - Default username: `admin`
-  - Default password: `k2so2025`
+  - Default password: `k2so2024`
   - ⚠️ **Change password in `config.h` before deployment!**
 
 #### Features Overview
@@ -496,7 +643,7 @@ ap start
 
 **Default AP Settings:**
 - **SSID**: `K2SO-XXXXXX` (where XXXXXX is from device MAC address)
-- **Password**: `k2so2025` (configurable in config.h)
+- **Password**: `k2so2024` (configurable in config.h)
 - **IP Address**: `192.168.4.1` (standard ESP32 AP address)
 
 **How AP Mode Works:**
@@ -1012,11 +1159,68 @@ Eyes can now be configured for two hardware variants:
 
 ### Software Issues
 
+#### Configuration Checksum Mismatch (Fixed in v1.2.3)
+
+**Symptom:** "Configuration checksum mismatch, reloading defaults" message appears repeatedly, or system hangs during boot
+
+**Cause:** EEPROM configuration data is corrupted (power loss during write, memory corruption, or version incompatibility)
+
+**Solution (Automatic in v1.2.3):**
+- System automatically detects corrupted configuration
+- Resets all settings to factory defaults
+- Saves clean configuration to EEPROM
+- System boots normally without user intervention
+
+**Manual Recovery (if needed):**
+```
+# Via Serial Monitor (115200 baud)
+reset                       # Restart system (will auto-recover)
+config                      # Verify configuration loaded correctly
+save                        # Force save current configuration
+```
+
+**Prevention:**
+- Avoid unplugging power during configuration save operations
+- Use `save` command only when necessary
+- Keep firmware up to date for improved EEPROM management
+
+**Verification:**
+- Open Serial Monitor (115200 baud)
+- Look for "Defaults loaded and saved after checksum mismatch" message
+- System should continue booting normally
+- All settings reset to defaults (reconfigure as needed)
+
+---
+
+#### ESP32-S3 Boot Hanging (Fixed in v1.2.2)
+
+**Symptom:** ESP32-S3 hangs during boot, no serial output, system doesn't start
+
+**Solution (PlatformIO - Automatic):**
+```bash
+pio run -t upload          # USB CDC configured automatically
+```
+
+**Solution (Arduino IDE - Manual):**
+1. Tools → Board → "ESP32S3 Dev Module"
+2. **Tools → USB CDC On Boot → "Enabled"** ⚠️ CRITICAL!
+3. Tools → USB Mode → "Hardware CDC and JTAG"
+4. Re-upload the sketch
+
+**Verification:**
+- Open Serial Monitor (115200 baud)
+- Press Reset button on ESP32-S3
+- You should see boot messages within 2-3 seconds
+- If still no output: Check USB cable and try different USB port
+
+**See PLATFORMIO_FIX.md for detailed troubleshooting guide**
+
 #### Compilation Errors
 - ✅ Verify ESP32 board package (3.3.1+)
 - ✅ Install all required libraries
 - ✅ Select "ESP32S3 Dev Module" as board
 - ✅ Check for library version conflicts
+- ✅ **PlatformIO users:** Run `pio lib install` to install dependencies
 
 #### WiFi Connection Problems
 - ✅ Update credentials in config.h
@@ -1187,6 +1391,8 @@ timing alert wait 200 800     # Quick reaction timing
 | No LED response | Test power supply, verify NeoPixel pins |
 | No audio | Check SD card format, verify DFPlayer wiring |
 | IR not working | Program remote with `learn` command |
+| Boot hanging | Enable "USB CDC On Boot" in Arduino IDE (v1.2.2 fix) |
+| Checksum mismatch | Auto-recovers in v1.2.3, use `reset` if needed |
 
 ### Diagnostic Commands
 

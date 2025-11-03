@@ -9,6 +9,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WebServer.h>
+#include <ESPmDNS.h>
 #include <Adafruit_NeoPixel.h>
 #include <ESP32Servo.h>
 #include <EEPROM.h>
@@ -1601,26 +1602,52 @@ void handleDetailCommand(String params) {
 void handleWiFiCommand(String params) {
   if (params.length() == 0) {
     Serial.println(F("\n=== WiFi Configuration ==="));
-    Serial.println(F("  wifi set <ssid> <password>  - Configure WiFi credentials"));
-    Serial.println(F("  wifi show                   - Show current WiFi settings"));
-    Serial.println(F("  wifi reset                  - Clear WiFi configuration"));
-    Serial.println(F("  wifi reconnect              - Reconnect to WiFi"));
+    Serial.println(F("  wifi set <ssid> <password>       - Configure WiFi credentials"));
+    Serial.println(F("  wifi set \"ssid\" \"password\"       - Use quotes for spaces"));
+    Serial.println(F("  wifi show                        - Show current WiFi settings"));
+    Serial.println(F("  wifi reset                       - Clear WiFi configuration"));
+    Serial.println(F("  wifi reconnect                   - Reconnect to WiFi"));
+    Serial.println(F("\nExample: wifi set \"HONOR Magoc V2\" \"my password\""));
     Serial.println(F("===========================\n"));
     return;
   }
 
+  // Smart parser that supports quoted strings with spaces
   String args[3];
   int argCount = 0;
-  int startIdx = 0;
+  int i = 0;
 
-  // Parse command and arguments
-  for (int i = 0; i <= params.length() && argCount < 3; i++) {
-    if (i == params.length() || params[i] == ' ') {
-      if (i > startIdx) {
-        args[argCount++] = params.substring(startIdx, i);
-      }
-      startIdx = i + 1;
+  while (i < params.length() && argCount < 3) {
+    // Skip leading spaces
+    while (i < params.length() && params[i] == ' ') {
+      i++;
     }
+
+    if (i >= params.length()) break;
+
+    // Check if this argument starts with a quote
+    if (params[i] == '"') {
+      i++; // Skip opening quote
+      int startIdx = i;
+      // Find closing quote
+      while (i < params.length() && params[i] != '"') {
+        i++;
+      }
+      args[argCount++] = params.substring(startIdx, i);
+      if (i < params.length()) i++; // Skip closing quote
+    } else {
+      // No quote, read until next space
+      int startIdx = i;
+      while (i < params.length() && params[i] != ' ') {
+        i++;
+      }
+      args[argCount++] = params.substring(startIdx, i);
+    }
+  }
+
+  if (argCount == 0) {
+    Serial.println(F("Invalid wifi command. Type 'wifi' for help."));
+    return;
   }
 
   String subCmd = args[0];
@@ -1647,7 +1674,7 @@ void handleWiFiCommand(String params) {
     }
     else {
       Serial.println(F("WiFi not configured"));
-      Serial.println(F("Use 'wifi set <ssid> <password>' to configure"));
+      Serial.println(F("Use 'wifi set \"ssid\" \"password\"' to configure (quotes for spaces)"));
     }
 
     Serial.print(F("Status: "));
@@ -1663,12 +1690,16 @@ void handleWiFiCommand(String params) {
   }
   else if (subCmd == "set") {
     if (argCount < 3) {
+      Serial.println(F("\n=== WiFi Set Command ==="));
       Serial.println(F("Usage: wifi set <ssid> <password>"));
-      Serial.println(F("Example: wifi set MyNetwork MyPassword123"));
+      Serial.println(F("\nFor SSIDs or passwords with spaces, use quotes:"));
+      Serial.println(F("  wifi set \"HONOR Magoc V2\" \"my password\""));
+      Serial.println(F("\nFor SSIDs without spaces:"));
+      Serial.println(F("  wifi set MyNetwork MyPassword123"));
+      Serial.println(F("===========================\n"));
       return;
     }
 
-    // Reconstruct password (in case it has spaces)
     String ssid = args[1];
     String password = args[2];
 
@@ -1725,8 +1756,18 @@ void handleWiFiCommand(String params) {
   }
   else if (subCmd == "reconnect") {
     Serial.println(F("Reconnecting to WiFi..."));
-    WiFi.disconnect();
-    delay(500);
+
+    // Stop web server first to prevent race conditions
+    server.stop();
+    Serial.println(F("Web server stopped"));
+
+    // Disconnect WiFi and wait for proper cleanup
+    WiFi.disconnect(true);  // true = wifioff
+    delay(1000);  // Increased delay to allow proper cleanup
+
+    // Stop MDNS service
+    MDNS.end();
+    delay(100);
 
     // Call the WiFi init function from main .ino (need to declare it extern)
     extern void initializeWiFi();
@@ -1734,6 +1775,8 @@ void handleWiFiCommand(String params) {
 
     initializeWiFi();
     setupWebServer();
+
+    Serial.println(F("WiFi reconnection complete"));
   }
   else {
     Serial.println(F("Invalid wifi command. Type 'wifi' for help."));
@@ -1746,28 +1789,54 @@ void handleWiFiCommand(String params) {
 void handleAPCommand(String params) {
   if (params.length() == 0) {
     Serial.println(F("\n=== Access Point Configuration ==="));
-    Serial.println(F("  ap set <ssid> <password>    - Configure AP credentials (password min 8 chars)"));
-    Serial.println(F("  ap show                     - Show current AP settings"));
-    Serial.println(F("  ap reset                    - Reset to default AP settings"));
-    Serial.println(F("  ap enable                   - Enable AP mode fallback"));
-    Serial.println(F("  ap disable                  - Disable AP mode fallback"));
-    Serial.println(F("  ap start                    - Start AP mode now"));
+    Serial.println(F("  ap set <ssid> <password>       - Configure AP credentials (password min 8 chars)"));
+    Serial.println(F("  ap set \"ssid\" \"password\"       - Use quotes for spaces"));
+    Serial.println(F("  ap show                        - Show current AP settings"));
+    Serial.println(F("  ap reset                       - Reset to default AP settings"));
+    Serial.println(F("  ap enable                      - Enable AP mode fallback"));
+    Serial.println(F("  ap disable                     - Disable AP mode fallback"));
+    Serial.println(F("  ap start                       - Start AP mode now"));
+    Serial.println(F("\nExample: ap set \"My K2SO\" \"password123\""));
     Serial.println(F("===================================\n"));
     return;
   }
 
+  // Smart parser that supports quoted strings with spaces (same as WiFi command)
   String args[3];
   int argCount = 0;
-  int startIdx = 0;
+  int i = 0;
 
-  // Parse command and arguments
-  for (int i = 0; i <= params.length() && argCount < 3; i++) {
-    if (i == params.length() || params[i] == ' ') {
-      if (i > startIdx) {
-        args[argCount++] = params.substring(startIdx, i);
-      }
-      startIdx = i + 1;
+  while (i < params.length() && argCount < 3) {
+    // Skip leading spaces
+    while (i < params.length() && params[i] == ' ') {
+      i++;
     }
+
+    if (i >= params.length()) break;
+
+    // Check if this argument starts with a quote
+    if (params[i] == '"') {
+      i++; // Skip opening quote
+      int startIdx = i;
+      // Find closing quote
+      while (i < params.length() && params[i] != '"') {
+        i++;
+      }
+      args[argCount++] = params.substring(startIdx, i);
+      if (i < params.length()) i++; // Skip closing quote
+    } else {
+      // No quote, read until next space
+      int startIdx = i;
+      while (i < params.length() && params[i] != ' ') {
+        i++;
+      }
+      args[argCount++] = params.substring(startIdx, i);
+    }
+  }
+
+  if (argCount == 0) {
+    Serial.println(F("Invalid ap command. Type 'ap' for help."));
+    return;
   }
 
   String subCmd = args[0];
@@ -1813,9 +1882,14 @@ void handleAPCommand(String params) {
   }
   else if (subCmd == "set") {
     if (argCount < 3) {
+      Serial.println(F("\n=== AP Set Command ==="));
       Serial.println(F("Usage: ap set <ssid> <password>"));
-      Serial.println(F("Example: ap set K2SO-Droid MySecurePass123"));
-      Serial.println(F("Note: Password must be at least 8 characters for WPA2"));
+      Serial.println(F("\nFor SSIDs or passwords with spaces, use quotes:"));
+      Serial.println(F("  ap set \"My K2SO\" \"my password\""));
+      Serial.println(F("\nFor SSIDs without spaces:"));
+      Serial.println(F("  ap set K2SO-Droid MySecurePass123"));
+      Serial.println(F("\nNote: Password must be at least 8 characters for WPA2"));
+      Serial.println(F("===========================\n"));
       return;
     }
 
@@ -3616,6 +3690,8 @@ void loadConfiguration() {
 
   if (storedChecksum != calculatedChecksum) {
     Serial.println("Configuration checksum mismatch, reloading defaults");
+    Serial.printf("  Stored checksum: 0x%08X\n", storedChecksum);
+    Serial.printf("  Calculated checksum: 0x%08X\n", calculatedChecksum);
 
     // Re-initialize with defaults instead of recursive call
     memset(&config, 0, sizeof(config));
@@ -3676,13 +3752,19 @@ void loadConfiguration() {
     Serial.println("Defaults loaded and saved after checksum mismatch");
   } else {
     Serial.printf("Configuration loaded (writes: %lu)\n", (unsigned long)config.writeCount);
+    // Debug: Show WiFi configuration status
+    if (config.wifiConfigured) {
+      Serial.printf("  WiFi configured: SSID='%s'\n", config.wifiSSID);
+    } else {
+      Serial.println("  WiFi not configured (wifiConfigured=false)");
+    }
   }
-  
+
   if (config.buttonCount == 0 || needsDefaults) {
     Serial.println("No IR remote configured. Loading default codes...");
     loadDefaultCodes();
   }
-  
+
   memcpy(&lastSavedConfig, &config, sizeof(config));
 }
 
@@ -3717,6 +3799,8 @@ void smartSaveToEEPROM() {
   if (memcmp(&config, &lastSavedConfig, sizeof(config) - sizeof(uint32_t)) != 0) {
     saveConfiguration();
     Serial.println("Configuration saved to EEPROM");
+  } else {
+    Serial.println("No configuration changes detected - skipping save");
   }
 }
 

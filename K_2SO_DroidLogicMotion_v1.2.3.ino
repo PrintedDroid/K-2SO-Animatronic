@@ -449,6 +449,20 @@ void initializeServos() {
   headPan.servoObject = &headPanServo;
   headTilt.servoObject = &headTiltServo;
 
+  // Detach servos first if already attached (prevents PWM channel conflicts)
+  if (eyePanServo.attached()) {
+    eyePanServo.detach();
+  }
+  if (eyeTiltServo.attached()) {
+    eyeTiltServo.detach();
+  }
+  if (headPanServo.attached()) {
+    headPanServo.detach();
+  }
+  if (headTiltServo.attached()) {
+    headTiltServo.detach();
+  }
+
   eyePanServo.attach(EYE_PAN_PIN, 500, 2500);
   eyeTiltServo.attach(EYE_TILT_PIN, 500, 2500);
   headPanServo.attach(HEAD_PAN_PIN, 500, 2500);
@@ -500,6 +514,9 @@ void startAccessPoint() {
 
   Serial.println(apSSID);
 
+  // Disable WiFi sleep to prevent RMT conflicts with NeoPixels
+  WiFi.setSleep(false);
+
   // Start AP mode
   bool apStarted = WiFi.softAP(apSSID.c_str(), apPassword.c_str());
 
@@ -531,6 +548,8 @@ void initializeWiFi() {
     statusLEDWiFiConnecting();
 
     WiFi.mode(WIFI_STA);
+    // Disable WiFi sleep to prevent RMT conflicts with NeoPixels
+    WiFi.setSleep(false);
     WiFi.begin(config.wifiSSID, config.wifiPassword);
     int attempts = 0;
     // Reduced timeout: 10 attempts * 300ms = 3 seconds max
@@ -553,6 +572,8 @@ void initializeWiFi() {
     statusLEDWiFiConnecting();
 
     WiFi.mode(WIFI_STA);
+    // Disable WiFi sleep to prevent RMT conflicts with NeoPixels
+    WiFi.setSleep(false);
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
     int attempts = 0;
     // Reduced timeout: 10 attempts * 300ms = 3 seconds max
@@ -588,7 +609,7 @@ void initializeWiFi() {
       startAccessPoint();
     } else {
       Serial.println(F("AP mode disabled. Use 'ap enable' to enable fallback AP mode."));
-      Serial.println(F("Or use 'wifi set <ssid> <password>' to reconfigure WiFi."));
+      Serial.println(F("Or use 'wifi set \"ssid\" \"password\"' to reconfigure WiFi (quotes for spaces)."));
     }
   }
 }
@@ -853,31 +874,38 @@ void setupWebServer() {
 void updateSystemStatus() {
   static unsigned long lastSystemCheck = 0;
   unsigned long currentTime = millis();
-  
-  // Update every 2 seconds
-  if (currentTime - lastSystemCheck < 2000) {
+
+  // Update every 5 seconds (reduced frequency to prevent WiFi task conflicts)
+  if (currentTime - lastSystemCheck < 5000) {
     return;
   }
   lastSystemCheck = currentTime;
-  
+
   // Auto-update status LED based on system state
   autoUpdateStatusLED();
-  
-  // Check WiFi status changes
+
+  // Check WiFi status changes (with error handling)
   static bool lastWifiStatus = false;
-  bool currentWifiStatus = (WiFi.status() == WL_CONNECTED);
-  
-  if (currentWifiStatus != lastWifiStatus) {
-    lastWifiStatus = currentWifiStatus;
-    if (currentWifiStatus) {
-      statusLEDWiFiConnected();
-      Serial.println("WiFi reconnected");
-    } else {
-      statusLEDWiFiDisconnected();
-      Serial.println("WiFi disconnected");
+  static bool wifiCheckFailed = false;
+
+  // Safe WiFi status check
+  wl_status_t wifiStatus = WiFi.status();
+  if (wifiStatus != WL_NO_SHIELD) {  // Check if WiFi is initialized
+    bool currentWifiStatus = (wifiStatus == WL_CONNECTED);
+
+    if (currentWifiStatus != lastWifiStatus) {
+      lastWifiStatus = currentWifiStatus;
+      wifiCheckFailed = false;
+      if (currentWifiStatus) {
+        statusLEDWiFiConnected();
+        Serial.println("WiFi reconnected");
+      } else {
+        statusLEDWiFiDisconnected();
+        Serial.println("WiFi disconnected");
+      }
     }
   }
-  
+
   // Check for errors
   if (bootSequenceComplete && !isAudioReady) {
     statusLEDError();

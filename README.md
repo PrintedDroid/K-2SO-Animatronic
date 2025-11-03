@@ -26,9 +26,9 @@ Designed for builders who demand professional results.
 
 ### Version 1.2.3 (2025-11-02)
 
-**Configuration Stability & Boot Sequence Improvements**
+**Configuration Stability, Boot Sequence & WiFi Stability Improvements**
 
-This update fixes critical bugs in configuration management and boot sequence, plus improves PlatformIO board configuration.
+This update fixes critical bugs in configuration management, boot sequence, and WiFi reconnection stability for PlatformIO builds.
 
 #### 🐛 Critical Bug Fixes
 
@@ -53,9 +53,42 @@ This update fixes critical bugs in configuration management and boot sequence, p
   - Variable declaration: `uint32_t brightRing = Adafruit_NeoPixel::Color(90, 120, 150);`
   - Consistent with other rotating ring effect cases (20, 21, 22)
 
+**4. PWM Channel Conflicts Fixed (Pins 5-8)** ⭐ NEW
+- Resolved "Pin X is already attached to LEDC" errors during servo initialization
+  - **Problem**: Servos were re-attached without detaching first, causing PWM channel conflicts
+  - **Symptoms**: Error messages like `[ESP32PWM.cpp:319] ERROR PWM channel failed to configure on pin 5!`
+  - **Solution**: Added `servo.detach()` checks before `servo.attach()` in `initializeServos()`
+  - Prevents LEDC channel conflicts during reinitialization or WiFi reconnection
+
+**5. RMT TX Light-Sleep Issue Fixed (Pin 3)** ⭐ NEW
+- Resolved NeoPixel RMT errors: "not able to power down in light sleep"
+  - **Problem**: WiFi power-save mode conflicted with NeoPixel RMT driver
+  - **Symptoms**: `[esp32-hal-rmt.c:548] RMT TX Initialization error` and NeoPixel flickering
+  - **Solution**: Disabled WiFi sleep mode with `WiFi.setSleep(false)` in all WiFi modes
+  - Prevents Light Sleep conflicts between WiFi and WS2812/NeoPixel RMT channels
+
+**6. WiFi Reconnect Crash Fixed** ⭐ NEW
+- Resolved FreeRTOS assertion crash during WiFi reconnection
+  - **Problem**: Race condition between WiFi tasks and Web Server during reconnection
+  - **Symptoms**: `assert failed: vTaskPriorityDisinheritAfterTimeout tasks.c:5267` followed by reboot
+  - **Root Cause**: Web server and MDNS were not properly stopped before WiFi disconnect
+  - **Solution**:
+    - Added `server.stop()` before `WiFi.disconnect()`
+    - Added `MDNS.end()` to properly clean up MDNS service
+    - Increased cleanup delay from 500ms to 1000ms
+    - Changed to `WiFi.disconnect(true)` for complete WiFi shutdown
+  - WiFi reconnect via serial command now stable and reliable
+
+**7. WiFi Status Check Race Conditions Fixed** ⭐ NEW
+- Improved WiFi status monitoring to prevent task conflicts
+  - Added `WL_NO_SHIELD` validation before accessing WiFi status
+  - Increased status update interval from 2 seconds to 5 seconds
+  - Prevents concurrent WiFi API calls that could cause task priority issues
+  - More reliable WiFi connection state tracking
+
 #### ⚡ Improvements
 
-**4. Boot Sequence Messages Made Informative**
+**8. Boot Sequence Messages Made Informative**
 - Reduced 14 repetitive "Boot:" messages to 5 descriptive messages
 - Clear indication of boot progress at key milestones:
   - "Boot: Initializing eye awakening sequence..."
@@ -66,16 +99,27 @@ This update fixes critical bugs in configuration management and boot sequence, p
 - 64% reduction in boot log spam (14 → 5 messages)
 - Easier debugging when boot hangs at specific step
 
+**9. WiFi Settings Persistence** ⭐ NEW
+- Verified and confirmed: WiFi credentials properly saved to EEPROM
+- `EEPROM.commit()` correctly called after WiFi configuration changes
+- Settings persist across power cycles and reboots
+
 
 #### ⚠️ When These Fixes Apply
 
 You'll benefit from this version if you've experienced:
-- "Configuration checksum mismatch, reloading defaults" message repeating
-- System hanging after checksum error message
-- Compilation errors about missing case statements or variables
-- Confusing boot sequence output with many "Boot:" messages
-- Need to manually select correct PlatformIO board environment
-- Corruption after power loss during EEPROM write
+- ✅ "Configuration checksum mismatch, reloading defaults" message repeating
+- ✅ System hanging after checksum error message
+- ✅ Compilation errors about missing case statements or variables
+- ✅ Confusing boot sequence output with many "Boot:" messages
+- ✅ **"Pin X is already attached to LEDC" errors** (SERVO PWM CONFLICT)
+- ✅ **"RMT TX Initialization error" on NeoPixel pins** (RMT LIGHT SLEEP)
+- ✅ **Random reboots with "assert failed: vTaskPriorityDisinheritAfterTimeout"** (WIFI RECONNECT CRASH)
+- ✅ **System crashes when using `wifi reconnect` command** (FREERTOS ASSERT)
+- ✅ **WiFi settings not saving after configuration** (EEPROM)
+- ✅ **Unstable WiFi connection with frequent disconnects** (WIFI STABILITY)
+- ✅ Need to manually select correct PlatformIO board environment
+- ✅ Corruption after power loss during EEPROM write
 
 ---
 
@@ -128,14 +172,14 @@ This release focuses on critical bug fixes, performance optimizations, and secur
 
 #### 🌐 Network Features (NEW)
 - **WiFi Configuration via Serial**: Configure WiFi without code recompilation
-  - `wifi set <ssid> <password>` - Store WiFi credentials in EEPROM
+  - `wifi set "ssid" "password"` - Store WiFi credentials in EEPROM (quotes for spaces)
   - `wifi show` - Display current WiFi settings and connection status
   - `wifi reset` - Clear WiFi configuration
   - `wifi reconnect` - Reconnect to WiFi network
   - EEPROM settings take priority over config.h
 - **Access Point (AP) Mode**: Create own WiFi network for direct connection
   - Automatic fallback when WiFi connection fails (if enabled)
-  - `ap set <ssid> <password>` - Configure custom AP credentials
+  - `ap set "ssid" "password"` - Configure custom AP credentials (quotes for spaces)
   - `ap enable` / `ap disable` - Control automatic AP fallback
   - `ap start` - Manually start AP mode
   - Default AP name: `K2SO-XXXXXX` (based on MAC address)
@@ -429,7 +473,12 @@ K-2SO_DroidLogicMotion_v1.1.0/
 
 Connect via Serial Monitor (115200 baud) and type:
 ```
-wifi set YourNetworkName YourPassword123
+wifi set "YourNetworkName" "YourPassword123"
+```
+
+**For SSIDs or passwords with spaces, use quotes:**
+```
+wifi set "HONOR Magoc V2" "my password"
 ```
 
 WiFi credentials are stored in EEPROM and persist across reboots.
@@ -604,14 +653,15 @@ reset         # Restart system
 
 #### WiFi Configuration (v1.2.0+):
 
-wifi set <ssid> <password>  # Configure WiFi credentials (saves to EEPROM)
+wifi set "ssid" "password"  # Configure WiFi credentials (saves to EEPROM, quotes for spaces)
 wifi show                   # Display current WiFi settings and connection status
 wifi reset                  # Clear WiFi configuration (requires confirmation)
 wifi reconnect              # Reconnect to WiFi with current settings
 
 **Examples:**
 ```
-wifi set MyHomeNetwork SuperSecret123
+wifi set "MyHomeNetwork" "SuperSecret123"
+wifi set "HONOR Magoc V2" "my password"  # With spaces
 wifi show
 wifi reconnect
 ```
@@ -626,7 +676,7 @@ wifi reconnect
 
 When WiFi connection fails, K-2SO can automatically create its own WiFi access point for direct connection.
 
-ap set <ssid> <password>    # Configure custom AP credentials (password min 8 chars)
+ap set "ssid" "password"    # Configure custom AP credentials (password min 8 chars, quotes for spaces)
 ap show                     # Display current AP settings and status
 ap reset                    # Reset to default AP settings (K2SO-XXXXXX)
 ap enable                   # Enable AP mode fallback (auto-starts when WiFi fails)
@@ -635,7 +685,8 @@ ap start                    # Start AP mode immediately
 
 **Examples:**
 ```
-ap set K2SO-Droid MyPassword123
+ap set "K2SO-Droid" "MyPassword123"
+ap set "My K2SO" "password with spaces"  # With spaces
 ap enable
 ap show
 ap start
@@ -1222,17 +1273,113 @@ pio run -t upload          # USB CDC configured automatically
 - ✅ Check for library version conflicts
 - ✅ **PlatformIO users:** Run `pio lib install` to install dependencies
 
-#### WiFi Connection Problems
-- ✅ Update credentials in config.h
+#### WiFi Connection Problems & Crashes (Fixed in v1.2.3) ⭐ NEW
+
+**Symptom 1: System crashes with "assert failed: vTaskPriorityDisinheritAfterTimeout"**
+```
+assert failed: vTaskPriorityDisinheritAfterTimeout tasks.c:5267
+Backtrace: 0x4037738d:0x3fcad2b0 ...
+Rebooting...
+```
+
+**Cause:** Race condition between WiFi tasks and Web Server during reconnection
+
+**Solution (Fixed in v1.2.3):**
+- Upgrade to v1.2.3 for automatic fix
+- WiFi reconnection now properly stops web server and MDNS before disconnect
+- Includes proper cleanup delays to prevent FreeRTOS task conflicts
+
+**Verification:**
+```
+wifi reconnect              # Should reconnect without crash
+```
+
+---
+
+**Symptom 2: WiFi settings not saved**
+
+**Cause:** EEPROM commit verified and working correctly
+
+**Solution:**
+```
+wifi set "ssid" "password"         # Configure WiFi (quotes for spaces)
+wifi set "HONOR Magoc V2" "pass"   # Example with spaces
+wifi show                          # Verify settings saved
+```
+
+**Verification:**
+- Settings persist after reboot/power cycle
+- Check with `wifi show` command
+
+---
+
+**General WiFi Issues:**
+- ✅ Update credentials in config.h OR use serial `wifi set` command
 - ✅ Check network availability and password
 - ✅ Verify 2.4GHz network (ESP32 doesn't support 5GHz)
 - ✅ Check router compatibility and firewall settings
+- ✅ **v1.2.3:** WiFi sleep mode automatically disabled to prevent RMT conflicts
 
 #### Serial Communication Issues
 - ✅ Set baud rate to 115200
 - ✅ Select correct COM port
 - ✅ Check USB cable quality
 - ✅ Press EN button if ESP32 doesn't respond
+
+---
+
+#### PWM Channel Conflicts (Fixed in v1.2.3) ⭐ NEW
+
+**Symptom:** Error messages during boot or WiFi reconnection:
+```
+[ESP32PWM.cpp:319] attachPin(): [ESP32PWM] ERROR PWM channel failed to configure on pin 5!
+[esp32-hal-ledc.c:111] ledcAttachChannel(): Pin 5 is already attached to LEDC (channel 0, resolution 10)
+```
+
+**Cause:** Servos were re-attached without detaching first, causing LEDC PWM channel conflicts
+
+**Solution (Fixed in v1.2.3):**
+- Upgrade to v1.2.3 for automatic fix
+- Servo initialization now checks for existing attachments before re-attaching
+- Prevents PWM channel conflicts during reinitialization
+
+**Affected Pins:** GP5, GP6, GP7, GP8 (Eye Pan/Tilt, Head Pan/Tilt servos)
+
+**Verification:**
+- Boot messages should no longer show PWM/LEDC errors
+- Servos initialize correctly without error messages
+
+---
+
+#### NeoPixel RMT Errors (Fixed in v1.2.3) ⭐ NEW
+
+**Symptom:** NeoPixel initialization errors and flickering LEDs:
+```
+E (250) rmt: rmt_new_tx_channel(269): not able to power down in light sleep
+[esp32-hal-rmt.c:548] rmtInit(): GPIO 3 - RMT TX Initialization error.
+[esp.c:82] espShow(): Failed to init RMT TX mode on pin 3
+```
+
+**Cause:** WiFi power-save mode (Light Sleep) conflicts with NeoPixel RMT driver
+
+**Solution (Fixed in v1.2.3):**
+- Upgrade to v1.2.3 for automatic fix
+- WiFi sleep mode automatically disabled with `WiFi.setSleep(false)`
+- Prevents conflicts between WiFi power management and WS2812/NeoPixel RMT channels
+
+**Affected Pins:** GP3, GP4 (Left/Right Eye NeoPixels), GP10 (Detail LED strip), GP21 (Status LED)
+
+**Verification:**
+- No RMT error messages during boot
+- NeoPixels initialize and animate smoothly
+- Status LED and Detail LEDs work correctly
+
+**Background:**
+- ESP32-S3 RMT (Remote Control) peripheral is used for precise WS2812 timing
+- WiFi Light Sleep mode can interfere with RMT timing requirements
+- Disabling WiFi sleep ensures stable NeoPixel operation
+
+---
 
 ### Performance Issues
 

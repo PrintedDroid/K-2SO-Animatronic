@@ -169,7 +169,7 @@ enum PixelMode {
 class Servo;
 
 // IR Button configuration
-struct IRButton {
+struct __attribute__((packed)) IRButton {
   char name[16];
   uint32_t code;
   bool isConfigured;
@@ -218,19 +218,19 @@ struct StatusLEDAnimation {
 };
 
 // Profile system for storing complete configurations
-struct Profile {
+struct __attribute__((packed)) Profile {
   char name[16];
   bool active;
   uint8_t mode;
   uint8_t volume;
   uint8_t eyeBrightness;
-  
+
   // Servo center positions
   uint8_t eyePanCenter;
   uint8_t eyeTiltCenter;
   uint8_t headPanCenter;
   uint8_t headTiltCenter;
-  
+
   // Timing settings
   uint16_t scanEyeMoveMin;
   uint16_t scanEyeMoveMax;
@@ -240,14 +240,15 @@ struct Profile {
   uint16_t alertEyeMoveMax;
   uint16_t soundPauseMin;
   uint16_t soundPauseMax;
-  
+
   // LED colors for different modes
   uint8_t scanColorR, scanColorG, scanColorB;
   uint8_t alertColorR, alertColorG, alertColorB;
 };
 
 // Main configuration structure
-struct ConfigData {
+// IMPORTANT: __attribute__((packed)) prevents padding bytes that cause checksum mismatches
+struct __attribute__((packed)) ConfigData {
   // System identification
   uint8_t magic;
   uint8_t version;

@@ -189,17 +189,8 @@ struct ServoState {
   bool isMoving;
 };
 
-// Legacy Detail LED blinker state (DEPRECATED - kept for compatibility)
-// Note: This is no longer used with WS2812 strips. See detailleds.h for new system.
-struct DetailBlinker {
-  uint8_t pin;
-  bool state;
-  unsigned long nextMs;
-  uint16_t minOnMs;
-  uint16_t maxOnMs;
-  uint16_t minOffMs;
-  uint16_t maxOffMs;
-};
+// Legacy Detail LED blinker state REMOVED
+// Detail LEDs now use WS2812 system - see detailleds.h
 
 // Status LED animation state (NEW)
 struct StatusLEDAnimation {

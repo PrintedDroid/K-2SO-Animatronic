@@ -171,9 +171,8 @@ void setVolume(uint8_t volume);      // Set audio volume
 // HARDWARE INITIALIZATION
 //========================================
 
-// Detail LED system
-void initializeDetailBlinkers();     // Initialize detail LED system
-void updateDetailBlinkers(unsigned long now); // Update detail LED blinkers
+// Legacy Detail LED functions removed - now using WS2812 system
+// See detailleds.h for initializeDetailLEDs() and updateDetailLEDs()
 
 //========================================
 // UTILITY FUNCTIONS

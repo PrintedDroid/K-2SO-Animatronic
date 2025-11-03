@@ -544,24 +544,39 @@ void initializeWiFi() {
   if (config.wifiConfigured && strlen(config.wifiSSID) > 0) {
     Serial.print(F("Connecting to WiFi (from EEPROM): "));
     Serial.println(config.wifiSSID);
+    Serial.printf("  SSID length: %d bytes\n", strlen(config.wifiSSID));
+    Serial.printf("  Password length: %d bytes\n", strlen(config.wifiPassword));
 
     statusLEDWiFiConnecting();
 
     WiFi.mode(WIFI_STA);
     // Disable WiFi sleep to prevent RMT conflicts with NeoPixels
     WiFi.setSleep(false);
+
+    Serial.println("  Calling WiFi.begin()...");
     WiFi.begin(config.wifiSSID, config.wifiPassword);
+
     int attempts = 0;
-    // Reduced timeout: 10 attempts * 300ms = 3 seconds max
-    while (WiFi.status() != WL_CONNECTED && attempts < 10) {
-      delay(300);  // Reduced from 500ms
+    // Extended timeout: 20 attempts * 500ms = 10 seconds max
+    Serial.print("  Waiting for connection");
+    while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+      delay(500);
       Serial.print(F("."));
       attempts++;
+
+      // Show WiFi status every 5 attempts
+      if (attempts % 5 == 0) {
+        Serial.printf(" [status=%d]", WiFi.status());
+      }
     }
     Serial.println();  // New line after dots
 
     if (WiFi.status() == WL_CONNECTED) {
       wifiConnected = true;
+      Serial.printf("  Connection successful after %d attempts\n", attempts);
+    } else {
+      Serial.printf("  Connection failed after %d attempts (status=%d)\n", attempts, WiFi.status());
+      Serial.println("  WiFi Status Codes: 0=IDLE, 1=NO_SSID, 3=CONNECTED, 4=FAILED, 6=DISCONNECTED");
     }
   }
   // Fallback to config.h if not configured in EEPROM

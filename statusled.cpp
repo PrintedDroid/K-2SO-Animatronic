@@ -622,18 +622,21 @@ void autoUpdateStatusLED() {
     return;
   }
   
-  // Check WiFi status
-  if (WiFi.status() == WL_CONNECTED) {
-    if (!wifiWasConnected) {
-      wifiWasConnected = true;
-      setStatusLEDState(STATUS_WIFI_CONNECTED);
-      delay(2000); // Show connected state for 2 seconds
-    }
-  } else {
-    if (wifiWasConnected) {
-      wifiWasConnected = false;
-      setStatusLEDState(STATUS_WIFI_DISCONNECTED);
-      return;
+  // Check WiFi status (safe check to prevent task conflicts)
+  wl_status_t wifiStatus = WiFi.status();
+  if (wifiStatus != WL_NO_SHIELD) {  // Check if WiFi is initialized
+    if (wifiStatus == WL_CONNECTED) {
+      if (!wifiWasConnected) {
+        wifiWasConnected = true;
+        setStatusLEDState(STATUS_WIFI_CONNECTED);
+        delay(2000); // Show connected state for 2 seconds
+      }
+    } else {
+      if (wifiWasConnected) {
+        wifiWasConnected = false;
+        setStatusLEDState(STATUS_WIFI_DISCONNECTED);
+        return;
+      }
     }
   }
   

@@ -99,11 +99,83 @@ This update fixes critical bugs in configuration management, boot sequence, and 
 - 64% reduction in boot log spam (14 → 5 messages)
 - Easier debugging when boot hangs at specific step
 
-**9. WiFi Settings Persistence** ⭐ NEW
-- Verified and confirmed: WiFi credentials properly saved to EEPROM
-- `EEPROM.commit()` correctly called after WiFi configuration changes
-- Settings persist across power cycles and reboots
+**9. WiFi Settings Persistence & EEPROM Structure Padding** ⭐ NEW
+- **Root Cause Discovered**: Structure padding bytes causing checksum mismatches
+  - **Problem**: C compiler inserts padding bytes for memory alignment (e.g., 3 bytes after `uint8_t magic`)
+  - **Impact**: Uninitialized padding bytes caused random checksum values on every boot
+  - **Symptoms**: WiFi settings appeared to save but were lost after reboot
+  - **Evidence**: Boot logs showed mismatched checksums (e.g., `0xFFFF351C` vs `0x00032FDC`)
+  - **Intermittent Nature**: "teilweise nicht bei jedem reset sichtbar" - padding bytes had random values
+- **Solution**: Added `__attribute__((packed))` to all EEPROM structures
+  - `struct __attribute__((packed)) IRButton { ... };`
+  - `struct __attribute__((packed)) Profile { ... };`
+  - `struct __attribute__((packed)) ConfigData { ... };`
+  - Eliminates all padding bytes, ensuring consistent memory layout
+- **EEPROM Commit Improvements**:
+  - Added verification by reading back after write
+  - Implemented automatic retry mechanism on verification failure
+  - Added 100ms delay after `EEPROM.commit()` to ensure flash write completion
+  - Enhanced `saveConfiguration()` with detailed logging and error detection
+- **Result**: WiFi credentials and all settings now persist reliably across reboots
 
+**10. Quote-Aware Parser for WiFi/AP Commands** ⭐ NEW
+- **Problem**: SSIDs or passwords with spaces couldn't be configured
+  - Example: User's SSID "HONOR Magoc V2" was split into 3 arguments
+  - Simple space-based parser treated each word as separate parameter
+- **Solution**: Implemented smart quote-aware parser
+  - Supports both quoted strings (`"My SSID"`) and unquoted strings (`MySSID`)
+  - Handles multiple arguments with mixed quoting
+  - Parser logic:
+    ```cpp
+    if (params[i] == '"') {
+      // Read until closing quote
+      args[argCount++] = params.substring(startIdx, endIdx);
+    } else {
+      // Read until next space
+      args[argCount++] = params.substring(startIdx, endIdx);
+    }
+    ```
+- **Usage Examples**:
+  - `wifi set "HONOR Magoc V2" "my password"` - Both with spaces
+  - `wifi set MySSID "password with spaces"` - Mixed
+  - `ap set "My K2SO" MyPassword123` - Mixed
+- **Documentation**: All WiFi/AP examples updated to show quote syntax
+
+**11. LED Eye Configuration Persistence** ⭐ NEW
+- **Problem**: LED eye version changes (7led/13led) didn't persist after reboot
+  - User would set `led eye 13led`, but after restart, it reverted to default
+  - Manual `save` command was required to persist the setting
+- **Solution**: Added automatic `smartSaveToEEPROM()` after eye version changes
+  - Modified LED eye command handler in `handlers.cpp`
+  - Now automatically saves to EEPROM when switching between 7-LED and 13-LED configurations
+  - Consistent with other configuration commands that auto-save
+- **Implementation**:
+  ```cpp
+  if (eyeVersion == "7led") {
+    setEyeHardwareVersion(EYE_VERSION_7LED);
+    smartSaveToEEPROM();  // Auto-save to EEPROM
+  } else if (eyeVersion == "13led") {
+    setEyeHardwareVersion(EYE_VERSION_13LED);
+    smartSaveToEEPROM();  // Auto-save to EEPROM
+  }
+  ```
+- **Result**: Eye configuration now persists across reboots without manual save
+
+#### 🧹 Code Quality Improvements
+
+**12. Legacy DetailBlinker Code Removed**
+- **Cleanup**: Removed deprecated GPIO-based detail LED system
+  - Old system used 2 simple GPIO LEDs (pins 10, 13) with basic on/off blinking
+  - New system uses WS2812 addressable LED strip with full color control
+  - Legacy code was causing confusion and bloating the codebase
+- **Files Modified**:
+  - `config.h`: Removed `DetailBlinker` struct definition
+  - `globals.h`: Removed `blinkers[2]` and `DETAIL_LED_PINS[2]` declarations
+  - `handlers.h`: Removed `initializeDetailBlinkers()` and `updateDetailBlinkers()` function declarations
+  - `handlers.cpp`: Removed empty `updateDetailBlinkers()` function
+  - `K_2SO_DroidLogicMotion_v1.2.3.ino`: Removed global variables and initialization function
+- **Code Reduction**: Removed 39 lines of dead code
+- **Result**: Cleaner, more maintainable codebase with only the active WS2812 system
 
 #### ⚠️ When These Fixes Apply
 
@@ -116,10 +188,14 @@ You'll benefit from this version if you've experienced:
 - ✅ **"RMT TX Initialization error" on NeoPixel pins** (RMT LIGHT SLEEP)
 - ✅ **Random reboots with "assert failed: vTaskPriorityDisinheritAfterTimeout"** (WIFI RECONNECT CRASH)
 - ✅ **System crashes when using `wifi reconnect` command** (FREERTOS ASSERT)
-- ✅ **WiFi settings not saving after configuration** (EEPROM)
+- ✅ **WiFi settings lost after reboot despite successful save** (EEPROM STRUCTURE PADDING)
+- ✅ **Intermittent "Configuration checksum mismatch" on some reboots but not all** (STRUCTURE PADDING)
+- ✅ **Cannot configure WiFi/AP with SSIDs or passwords containing spaces** (QUOTE PARSER)
+- ✅ **LED eye configuration (7led/13led) doesn't persist after reboot** (AUTO-SAVE)
 - ✅ **Unstable WiFi connection with frequent disconnects** (WIFI STABILITY)
 - ✅ Need to manually select correct PlatformIO board environment
 - ✅ Corruption after power loss during EEPROM write
+- ✅ Confusion from legacy DetailBlinker code remnants
 
 ---
 
@@ -1296,20 +1372,46 @@ wifi reconnect              # Should reconnect without crash
 
 ---
 
-**Symptom 2: WiFi settings not saved**
+**Symptom 2: WiFi settings lost after reboot** ⭐ FIXED IN v1.2.3
 
-**Cause:** EEPROM commit verified and working correctly
+**Previous Symptom:**
+```
+Configuration checksum mismatch!
+Stored checksum: 0xFFFF351C, Calculated checksum: 0x00032FDC
+WiFi not configured
+```
 
-**Solution:**
+**Root Cause (Discovered & Fixed):**
+- **Structure padding bytes** were causing checksum mismatches
+- C compiler inserts padding bytes for memory alignment (e.g., 3 bytes after `uint8_t magic`)
+- These uninitialized padding bytes had random values on each boot
+- Checksums calculated differently each time, causing "checksum mismatch"
+- Settings appeared saved but were rejected as corrupted on reboot
+- **Intermittent nature**: Sometimes worked, sometimes didn't (depending on random padding values)
+
+**Solution (Implemented in v1.2.3):**
+1. **Structure Packing**: Added `__attribute__((packed))` to all EEPROM structures
+   - Eliminates padding bytes completely
+   - Ensures consistent memory layout
+2. **EEPROM Verification**: Added read-back verification after write
+   - Automatically retries on verification failure
+   - 100ms delay after `EEPROM.commit()` for flash write completion
+3. **Enhanced Logging**: Detailed debug output shows checksums and verification status
+
+**How to Configure WiFi:**
 ```
 wifi set "ssid" "password"         # Configure WiFi (quotes for spaces)
 wifi set "HONOR Magoc V2" "pass"   # Example with spaces
 wifi show                          # Verify settings saved
+reset                              # Reboot to test persistence
+wifi show                          # Should show same settings after reboot
 ```
 
 **Verification:**
-- Settings persist after reboot/power cycle
-- Check with `wifi show` command
+- No more "Configuration checksum mismatch" messages on boot
+- Settings persist reliably after reboot/power cycle
+- Serial output shows: "✓ EEPROM verification PASSED"
+- Check with `wifi show` command after reboot
 
 ---
 

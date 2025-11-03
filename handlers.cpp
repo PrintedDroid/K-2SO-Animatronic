@@ -3692,6 +3692,9 @@ void loadConfiguration() {
     Serial.println("Configuration checksum mismatch, reloading defaults");
     Serial.printf("  Stored checksum: 0x%08X\n", storedChecksum);
     Serial.printf("  Calculated checksum: 0x%08X\n", calculatedChecksum);
+    Serial.printf("  Config size: %u bytes\n", sizeof(config));
+    Serial.printf("  wifiConfigured: %d\n", config.wifiConfigured);
+    Serial.printf("  wifiSSID: '%s' (len=%d)\n", config.wifiSSID, strlen(config.wifiSSID));
 
     // Re-initialize with defaults instead of recursive call
     memset(&config, 0, sizeof(config));
@@ -3773,26 +3776,43 @@ void saveConfiguration() {
   config.checksum = 0;
   config.checksum = calculateChecksum();
 
-  // Optimized byte-level EEPROM writing
-  // Only write bytes that have actually changed to reduce EEPROM wear
-  uint8_t* configBytes = (uint8_t*)&config;
-  uint8_t* lastSavedBytes = (uint8_t*)&lastSavedConfig;
-  size_t bytesWritten = 0;
+  Serial.printf("Saving config: writeCount=%lu, checksum=0x%08X\n",
+                (unsigned long)config.writeCount, config.checksum);
 
-  for (size_t i = 0; i < sizeof(config); i++) {
-    if (configBytes[i] != lastSavedBytes[i]) {
-      EEPROM.write(i, configBytes[i]);
-      bytesWritten++;
-    }
+  // Write entire structure to EEPROM (not just changed bytes)
+  // This is more reliable than selective writing
+  EEPROM.put(0, config);
+
+  // CRITICAL: Commit and verify
+  bool commitSuccess = EEPROM.commit();
+
+  if (commitSuccess) {
+    Serial.println("EEPROM.commit() returned success");
+  } else {
+    Serial.println("WARNING: EEPROM.commit() returned FAILURE!");
   }
 
-  EEPROM.commit();
-  memcpy(&lastSavedConfig, &config, sizeof(config));
+  // CRITICAL: Add delay to ensure flash write completes
+  delay(100);
 
-  // Log how many bytes were actually written
-  Serial.printf("EEPROM: %u/%u bytes written (%.1f%% reduction)\n",
-                bytesWritten, sizeof(config),
-                100.0 * (1.0 - (float)bytesWritten / sizeof(config)));
+  // Verify the write by reading back
+  ConfigData verifyConfig;
+  EEPROM.get(0, verifyConfig);
+
+  if (verifyConfig.checksum == config.checksum) {
+    Serial.println("✓ EEPROM verification PASSED");
+    memcpy(&lastSavedConfig, &config, sizeof(config));
+  } else {
+    Serial.printf("✗ EEPROM verification FAILED! Stored=0x%08X, Expected=0x%08X\n",
+                  verifyConfig.checksum, config.checksum);
+    // Try commit again
+    Serial.println("Retrying EEPROM.commit()...");
+    EEPROM.put(0, config);
+    EEPROM.commit();
+    delay(200);
+  }
+
+  Serial.printf("Config saved (size: %u bytes)\n", sizeof(config));
 }
 
 void smartSaveToEEPROM() {

@@ -1409,8 +1409,10 @@ void handleLEDCommand(String params) {
 
     if (eyeVersion == "7led") {
       setEyeHardwareVersion(EYE_VERSION_7LED);
+      smartSaveToEEPROM();  // Save to EEPROM so it persists after reboot
     } else if (eyeVersion == "13led") {
       setEyeHardwareVersion(EYE_VERSION_13LED);
+      smartSaveToEEPROM();  // Save to EEPROM so it persists after reboot
     } else {
       Serial.println("Invalid eye version. Use: 7led or 13led");
     }
@@ -3936,14 +3938,5 @@ void restoreFromSerial() {
   Serial.setTimeout(1000);
 }
 
-//========================================
-// LEGACY DETAIL LED SYSTEM (DEPRECATED)
-// This function is no longer used - Detail LEDs now use WS2812 system
-// Kept for backward compatibility only
-//========================================
-
-void updateDetailBlinkers(unsigned long now) {
-  // This function is deprecated and should not be called
-  // WS2812 detail LEDs are updated via updateDetailLEDs() in detailleds.cpp
-  // Legacy code kept for reference only
-}
+// Legacy updateDetailBlinkers() function removed
+// Detail LEDs now use WS2812 system - see detailleds.cpp

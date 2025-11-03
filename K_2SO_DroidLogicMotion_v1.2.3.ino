@@ -217,8 +217,6 @@ USE OF THIS CODE CONSTITUTES ACCEPTANCE OF THESE TERMS.
 //========================================
 // GLOBAL VARIABLE DEFINITIONS
 //========================================
-// Legacy detail LED pins (DEPRECATED - kept for compatibility)
-const uint8_t DETAIL_LED_PINS[2] = {10, 13};
 const char* standard17Buttons[17] = {
   "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
   "*", "#", "UP", "DOWN", "LEFT", "RIGHT", "OK"
@@ -277,7 +275,6 @@ ServoState eyePan;
 ServoState eyeTilt;
 ServoState headPan;
 ServoState headTilt;
-DetailBlinker blinkers[2];  // Legacy: kept for compatibility
 
 // Status LED variables (NEW)
 StatusLEDAnimation statusLEDAnim;
@@ -434,13 +431,6 @@ void initializeHardware() {
   }
 
   initializeIR();
-}
-
-// Legacy function - kept for compatibility but no longer used
-// Detail LEDs now use WS2812 strip controlled by detailleds.cpp
-void initializeDetailBlinkers() {
-  // This function is deprecated and not called anymore
-  // WS2812 detail LEDs are initialized via initializeDetailLEDs() in detailleds.cpp
 }
 
 void initializeServos() {

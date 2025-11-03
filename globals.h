@@ -146,10 +146,7 @@ extern ServoState headTilt;
 // See detailleds.h for new WS2812 strip system
 //========================================
 
-extern DetailBlinker blinkers[2];  // Legacy: kept for compatibility
-
-// Detail LED pin array (constant) - LEGACY
-extern const uint8_t DETAIL_LED_PINS[2];
+// Legacy DetailBlinker variables removed - now using WS2812 system (see detailleds.h)
 
 //========================================
 // NEW DETAIL LED SYSTEM (WS2812)

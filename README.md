@@ -368,7 +368,38 @@ This release focuses on critical bug fixes, performance optimizations, and secur
 - **Audio Output Options:**
   - **Option 1**: PAM8406 amplifier → 2 screw terminals (stereo speaker output)
   - **Option 2**: DFPlayer line out → 3.5mm jack (direct line signal)
-- **Speakers** - 4Ω or 8Ω compatible (for amplified output)
+
+#### Speaker Compatibility
+
+| Output Type | Speaker Options | Power | Notes |
+|-------------|-----------------|-------|-------|
+| **PAM8406 Amplifier** | 4Ω speakers | 5W per channel | Best volume, recommended for droid builds |
+| **PAM8406 Amplifier** | 8Ω speakers | 2.5W per channel | Lower volume, still good quality |
+| **DFPlayer Line Out** | Powered speakers | Line level | Use active speakers or external amp |
+| **DFPlayer Line Out** | 3.5mm headphones | Line level | For testing only |
+| **DFPlayer DAC Out** | External Hi-Fi amp | Line level | Best audio quality |
+
+**Recommended Speakers:**
+- **Small Droids**: 3W-5W, 4Ω, 40mm diameter
+- **Medium Droids**: 5W-10W, 4Ω, 50-70mm diameter
+- **Large Droids**: 10W+, 4Ω, full-range or 2-way speakers
+
+**Connection Examples:**
+```
+Option 1: PAM8406 Amplified (Recommended)
+DFPlayer DAC_R/DAC_L → PAM8406 Input → 4Ω/8Ω Speakers
+
+Option 2: Line Out (External Amp)
+DFPlayer DAC_R/DAC_L → 3.5mm Jack → Powered Speakers / External Amplifier
+
+Option 3: Direct (Low Volume)
+DFPlayer SPK_1/SPK_2 → 8Ω Speaker (max 3W, mono only)
+```
+
+**⚠️ Important:**
+- Never connect speakers directly to Line Out (DAC pins) - use amplifier
+- PAM8406 requires adequate 5V power supply (up to 2A at full volume)
+- For stereo, use both channels; for mono, bridge is not recommended
 
 ### Optional Components
 - **IR Receiver TSOP38238** - For remote control
@@ -725,6 +756,123 @@ To load standard NEC remote codes.
 - **Error Handling**: Connection monitoring, visual feedback
 - **Browser Support**: Chrome, Firefox, Safari, Edge (all modern browsers)
 - **Security**: HTTP Basic Authentication (v1.2.0+)
+
+#### HTTP API Endpoints (WiFi Remote Control)
+
+Control K-2SO from any device via HTTP requests. All endpoints use GET method.
+
+**Base URL:** `http://[K2SO_IP]` or `http://k2so.local`
+
+| Endpoint | Description | Parameters |
+|----------|-------------|------------|
+| `/` | Web interface (main page) | - |
+| `/status` | Get system status (JSON) | - |
+| `/servo` | Control servos | `ep`, `et`, `hp`, `ht` (0-180) |
+| `/led` | Set eye LED color | `r`, `g`, `b` (0-255) |
+| `/brightness` | Set LED brightness | `v` (0-255) |
+| `/animation` | Set LED animation | `m` (mode name) |
+| `/detail` | Control detail LEDs | `on`, `off`, `pattern`, `count`, `brightness` |
+| `/sound` | Play audio | `f` (folder), `t` (track), `v` (volume) |
+| `/mode` | Set behavior mode | `m` (scanning/alert/idle) |
+| `/center` | Center all servos | - |
+
+**Voice Trigger Endpoints (for IFTTT/Siri/Alexa):**
+
+| Endpoint | Action |
+|----------|--------|
+| `/trigger/wakeup` | Wake up, scanning mode, blue eyes |
+| `/trigger/standby` | Standby mode, dim blue glow |
+| `/trigger/sleep` | Sleep mode, everything off |
+| `/trigger/demo` | Full demo sequence |
+| `/trigger/speak` | Random voice line |
+| `/trigger/alert` | Alert mode, red eyes |
+| `/trigger/scanner` | Scanner eye animation |
+| `/trigger/alarm` | Alarm mode, flashing red |
+| `/trigger/center` | Center all servos |
+| `/trigger/patrol` | Patrol mode with movement |
+
+**Example HTTP Requests:**
+
+```bash
+# Set eye color to red
+curl "http://k2so.local/led?r=255&g=0&b=0"
+
+# Move servos (eye pan=45, eye tilt=90, head pan=120, head tilt=90)
+curl "http://k2so.local/servo?ep=45&et=90&hp=120&ht=90"
+
+# Play sound from folder 4, track 2
+curl "http://k2so.local/sound?f=4&t=2"
+
+# Set scanning mode
+curl "http://k2so.local/mode?m=scanning"
+
+# Set LED animation to pulse
+curl "http://k2so.local/animation?m=pulse"
+
+# Set detail LEDs: 5 LEDs, chase pattern, brightness 150
+curl "http://k2so.local/detail?count=5&pattern=chase&brightness=150"
+
+# Get system status as JSON
+curl "http://k2so.local/status"
+
+# Trigger wake up (for voice assistants)
+curl "http://k2so.local/trigger/wakeup"
+```
+
+**Integration Examples:**
+
+```python
+# Python example
+import requests
+
+K2SO_IP = "192.168.1.100"
+
+# Wake up K-2SO
+requests.get(f"http://{K2SO_IP}/trigger/wakeup")
+
+# Set custom eye color
+requests.get(f"http://{K2SO_IP}/led", params={"r": 80, "g": 150, "b": 255})
+
+# Move head to look left
+requests.get(f"http://{K2SO_IP}/servo", params={"hp": 45})
+```
+
+```javascript
+// JavaScript example
+const K2SO_IP = "192.168.1.100";
+
+// Wake up K-2SO
+fetch(`http://${K2SO_IP}/trigger/wakeup`);
+
+// Set alert mode
+fetch(`http://${K2SO_IP}/mode?m=alert`);
+
+// Play random voice
+fetch(`http://${K2SO_IP}/trigger/speak`);
+```
+
+**Home Assistant Integration:**
+
+```yaml
+# configuration.yaml
+rest_command:
+  k2so_wakeup:
+    url: "http://192.168.1.100/trigger/wakeup"
+  k2so_sleep:
+    url: "http://192.168.1.100/trigger/sleep"
+  k2so_alert:
+    url: "http://192.168.1.100/trigger/alert"
+  k2so_speak:
+    url: "http://192.168.1.100/trigger/speak"
+  k2so_set_color:
+    url: "http://192.168.1.100/led?r={{ r }}&g={{ g }}&b={{ b }}"
+```
+
+**Notes:**
+- All endpoints require authentication if enabled (HTTP Basic Auth)
+- Response format is JSON for `/status`, plain text for others
+- Servo values are clamped to configured limits
+- Invalid parameters are ignored (no error response)
 
 ### 3. Serial Commands (115200 baud)
 

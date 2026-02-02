@@ -11,15 +11,25 @@ Developed by [Printed-Droid.com](https://www.printed-droid.com)
 This repository contains multiple firmware versions for the K-2SO Droid Logic Motion Board:
 
 ```
-K-2SO-Animatronic-BEN/
+K-2SO-Animatronic/
+├── K_2SO_DroidLogicMotion_v1.1.0/   ← Original First Sketch
 ├── K_2SO_DroidLogicMotion_v1.2.3/   ← Stable Production Version
 ├── K_2SO_DroidLogicMotion_v1.2.5/   ← Beta Version (Testing)
+├── K-2SO Audio Files/               ← Audio Files for DFPlayer
 └── README.md                         ← This file
 ```
 
 ---
 
 ## Version Overview
+
+### v1.1.0 - Original First Sketch (Archive)
+
+**Status:** Archived - One of the first sketches for the K-2SO animatronic system
+
+**Note:** This version is preserved as a historical reference showing the original foundation of the project. For active use, please refer to v1.2.3 or newer.
+
+---
 
 ### v1.2.3 - Stable Production Version ✅
 
@@ -83,6 +93,7 @@ K-2SO-Animatronic-BEN/
 | Exhibition / Daily Use | v1.2.3 (Stable) |
 | Testing New Features | v1.2.5 (Beta) |
 | Sequence Recording | v1.2.5 (Beta) |
+| Historical Reference | v1.1.0 (Archive) |
 
 ### 2. Hardware Requirements
 

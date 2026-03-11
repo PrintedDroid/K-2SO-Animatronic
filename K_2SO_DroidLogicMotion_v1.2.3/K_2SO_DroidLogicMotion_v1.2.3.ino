@@ -1,7 +1,7 @@
 /*
 ================================================================================
 PROJECT:      K-2SO Professional Animatronics Controller
-VERSION:      1.2.2
+VERSION:      1.2.3
 AUTHOR:       Printed-Droid.com
 DATE:         2025-11-02
 DESCRIPTION:  Advanced ESP32-S3 based control system for Star Wars K-2SO droid builds

@@ -17,7 +17,7 @@
 // Page titles and branding
 #define WEB_TITLE               "K-2SO Controller"
 #define WEB_SUBTITLE            "Professional Droid Interface"
-#define WEB_VERSION             "v1.1.0"
+#define WEB_VERSION             "v1.2.3"
 
 // Default values for dynamic content
 #define DEFAULT_WEB_BRIGHTNESS  150

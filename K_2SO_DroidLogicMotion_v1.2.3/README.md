@@ -105,7 +105,7 @@ This update fixes critical bugs in configuration management, boot sequence, and 
   - **Impact**: Uninitialized padding bytes caused random checksum values on every boot
   - **Symptoms**: WiFi settings appeared to save but were lost after reboot
   - **Evidence**: Boot logs showed mismatched checksums (e.g., `0xFFFF351C` vs `0x00032FDC`)
-  - **Intermittent Nature**: "partially not visible on every reset" - padding bytes had random values
+  - **Intermittent Nature**: "teilweise nicht bei jedem reset sichtbar" - padding bytes had random values
 - **Solution**: Added `__attribute__((packed))` to all EEPROM structures
   - `struct __attribute__((packed)) IRButton { ... };`
   - `struct __attribute__((packed)) Profile { ... };`
@@ -368,38 +368,7 @@ This release focuses on critical bug fixes, performance optimizations, and secur
 - **Audio Output Options:**
   - **Option 1**: PAM8406 amplifier → 2 screw terminals (stereo speaker output)
   - **Option 2**: DFPlayer line out → 3.5mm jack (direct line signal)
-
-#### Speaker Compatibility
-
-| Output Type | Speaker Options | Power | Notes |
-|-------------|-----------------|-------|-------|
-| **PAM8406 Amplifier** | 4Ω speakers | 5W per channel | Best volume, recommended for droid builds |
-| **PAM8406 Amplifier** | 8Ω speakers | 2.5W per channel | Lower volume, still good quality |
-| **DFPlayer Line Out** | Powered speakers | Line level | Use active speakers or external amp |
-| **DFPlayer Line Out** | 3.5mm headphones | Line level | For testing only |
-| **DFPlayer DAC Out** | External Hi-Fi amp | Line level | Best audio quality |
-
-**Recommended Speakers:**
-- **Small Droids**: 3W-5W, 4Ω, 40mm diameter
-- **Medium Droids**: 5W-10W, 4Ω, 50-70mm diameter
-- **Large Droids**: 10W+, 4Ω, full-range or 2-way speakers
-
-**Connection Examples:**
-```
-Option 1: PAM8406 Amplified (Recommended)
-DFPlayer DAC_R/DAC_L → PAM8406 Input → 4Ω/8Ω Speakers
-
-Option 2: Line Out (External Amp)
-DFPlayer DAC_R/DAC_L → 3.5mm Jack → Powered Speakers / External Amplifier
-
-Option 3: Direct (Low Volume)
-DFPlayer SPK_1/SPK_2 → 8Ω Speaker (max 3W, mono only)
-```
-
-**⚠️ Important:**
-- Never connect speakers directly to Line Out (DAC pins) - use amplifier
-- PAM8406 requires adequate 5V power supply (up to 2A at full volume)
-- For stereo, use both channels; for mono, bridge is not recommended
+- **Speakers** - 4Ω or 8Ω compatible (for amplified output)
 
 ### Optional Components
 - **IR Receiver TSOP38238** - For remote control
@@ -411,22 +380,19 @@ DFPlayer SPK_1/SPK_2 → 8Ω Speaker (max 3W, mono only)
 
 ESP32-S3-Zero Pin Assignments:
 
-```
-Pin 1  → I2C SDA (future expansion)
-Pin 2  → I2C SCL (future expansion)
-Pin 3  → Left Eye NeoPixel (7 or 13 LEDs, configurable)
-Pin 4  → Right Eye NeoPixel (7 or 13 LEDs, configurable)
-Pin 5  → Eye Pan Servo
-Pin 6  → Eye Tilt Servo
-Pin 7  → Head Pan Servo
-Pin 8  → Head Tilt Servo
-Pin 9  → IR Receiver (TSOP38238)
-Pin 10 → Detail LED Strip (WS2812, 1-8 LEDs)
-Pin 11 → DFPlayer TX
-Pin 12 → DFPlayer RX
-Pin 13 → (Reserved for future expansion)
-Pin 21 → Status LED (WS2812, 1 LED)
-```  
+GP1  → I2C SDA (future expansion)  
+GP2  → I2C SCL (future expansion)  
+GP3  → Left Eye NeoPixel (7 or 13 LEDs, configurable)  
+GP4  → Right Eye NeoPixel (7 or 13 LEDs, configurable)  
+GP5  → Eye Pan Servo  
+GP6  → Eye Tilt Servo  
+GP7  → Head Pan Servo  
+GP8  → Head Tilt Servo  
+GP9  → IR Receiver (TSOP38238)  
+GP10 → Detail LED Strip (WS2812, 1-8 LEDs)  
+GP11 → DFPlayer TX  
+GP12 → DFPlayer RX  
+GP13 → (Reserved for future expansion)  
 
 ## 🔌 Power Requirements
 
@@ -442,23 +408,23 @@ Pin 21 → Status LED (WS2812, 1 LED)
 
 Create the following folder structure on your microSD card (FAT32 format):
 
-```
-📁 /
-├── 📁 01/              # Scanning mode sounds
-│   ├── 001.mp3         # Ambient scanning sounds
-│   ├── 002.mp3         # Servo movement sounds
-│   └── ...
-├── 📁 02/              # Alert mode sounds
-│   ├── 001.mp3         # Alert beeps/warnings
-│   ├── 002.mp3         # Fast response sounds
-│   └── ...
-├── 📁 03/              # Boot sequence
-│   └── 001.mp3         # System startup sound
-└── 📁 04/              # Voice lines/responses
-    ├── 001.mp3         # "I am K-2SO"
-    ├── 002.mp3         # "Behavior"
-    ├── 003.mp3         # "Fresh one"
-    └── ...
+
+📁 /  
+├── 📁 01/              # Scanning mode sounds  
+│   ├── 001.mp3         # Ambient scanning sounds  
+│   ├── 002.mp3         # Servo movement sounds  
+│   └── ...  
+├── 📁 02/              # Alert mode sounds    
+│   ├── 001.mp3         # Alert beeps/warnings  
+│   ├── 002.mp3         # Fast response sounds  
+│   └── ...  
+├── 📁 03/              # Boot sequence  
+│   └── 001.mp3         # System startup sound  
+└── 📁 04/              # Voice lines/responses  
+    ├── 001.mp3         # "I am K-2SO"  
+    ├── 002.mp3         # "Behavior"  
+    ├── 003.mp3         # "Fresh one"  
+    └── ...  
 ```  
 
 ## 🚀 Installation
@@ -546,7 +512,7 @@ All libraries are automatically installed from `platformio.ini`. No manual insta
 
 Install via Arduino Library Manager:
 
-```
+
 Required Libraries:
 ├── Adafruit NeoPixel (1.15.1+)
 ├── ESP32Servo (3.0.8+)
@@ -555,17 +521,16 @@ Required Libraries:
 
 Built-in (no installation needed):
 ├── WiFi
-├── WebServer
+├── WebServer  
 ├── ESPmDNS
 └── EEPROM
-```
 
 
 ### 3. Project File Structure
 
-```
+
 K-2SO_DroidLogicMotion_v1.1.0/
-├── K-2SO_DroidLogicMotion_v1.1.0.ino    # Main program file (v1.1.0)
+├── K-2SO_DroidLogicMotion_v1.10.ino    # Main program file (v1.1.0)
 ├── config.h                              # Hardware configuration
 ├── globals.h                             # Global variable declarations
 ├── handlers.cpp/.h                       # Command processing
@@ -574,7 +539,6 @@ K-2SO_DroidLogicMotion_v1.1.0/
 ├── webpage.cpp/.h                        # Web interface
 ├── Mp3Notify.cpp/.h                      # Audio system callbacks
 └── README.md                             # This file
-```
 
 
 ### 4. Configuration Steps
@@ -590,7 +554,7 @@ wifi set "YourNetworkName" "YourPassword123"
 
 **For SSIDs or passwords with spaces, use quotes:**
 ```
-wifi set "HONOR Magoc V2" "my password"
+wifi set "my Wifi" "my password"
 ```
 
 WiFi credentials are stored in EEPROM and persist across reboots.
@@ -620,15 +584,11 @@ Note: EEPROM configuration takes priority over config.h
 #### Step 4: IR Remote Programming
 In Serial Monitor, type:
 
-```
 learn
-```
 
 Follow prompts to program your remote, or type:
 
-```
 default
-```
 
 To load standard NEC remote codes.
 
@@ -757,143 +717,22 @@ To load standard NEC remote codes.
 - **Browser Support**: Chrome, Firefox, Safari, Edge (all modern browsers)
 - **Security**: HTTP Basic Authentication (v1.2.0+)
 
-#### HTTP API Endpoints (WiFi Remote Control)
-
-Control K-2SO from any device via HTTP requests. All endpoints use GET method.
-
-**Base URL:** `http://[K2SO_IP]` or `http://k2so.local`
-
-| Endpoint | Description | Parameters |
-|----------|-------------|------------|
-| `/` | Web interface (main page) | - |
-| `/status` | Get system status (JSON) | - |
-| `/servo` | Control servos | `ep`, `et`, `hp`, `ht` (0-180) |
-| `/led` | Set eye LED color | `r`, `g`, `b` (0-255) |
-| `/brightness` | Set LED brightness | `v` (0-255) |
-| `/animation` | Set LED animation | `m` (mode name) |
-| `/detail` | Control detail LEDs | `on`, `off`, `pattern`, `count`, `brightness` |
-| `/sound` | Play audio | `f` (folder), `t` (track), `v` (volume) |
-| `/mode` | Set behavior mode | `m` (scanning/alert/idle) |
-| `/center` | Center all servos | - |
-
-**Voice Trigger Endpoints (for IFTTT/Siri/Alexa):**
-
-| Endpoint | Action |
-|----------|--------|
-| `/trigger/wakeup` | Wake up, scanning mode, blue eyes |
-| `/trigger/standby` | Standby mode, dim blue glow |
-| `/trigger/sleep` | Sleep mode, everything off |
-| `/trigger/demo` | Full demo sequence |
-| `/trigger/speak` | Random voice line |
-| `/trigger/alert` | Alert mode, red eyes |
-| `/trigger/scanner` | Scanner eye animation |
-| `/trigger/alarm` | Alarm mode, flashing red |
-| `/trigger/center` | Center all servos |
-| `/trigger/patrol` | Patrol mode with movement |
-
-**Example HTTP Requests:**
-
-```bash
-# Set eye color to red
-curl "http://k2so.local/led?r=255&g=0&b=0"
-
-# Move servos (eye pan=45, eye tilt=90, head pan=120, head tilt=90)
-curl "http://k2so.local/servo?ep=45&et=90&hp=120&ht=90"
-
-# Play sound from folder 4, track 2
-curl "http://k2so.local/sound?f=4&t=2"
-
-# Set scanning mode
-curl "http://k2so.local/mode?m=scanning"
-
-# Set LED animation to pulse
-curl "http://k2so.local/animation?m=pulse"
-
-# Set detail LEDs: 5 LEDs, chase pattern, brightness 150
-curl "http://k2so.local/detail?count=5&pattern=chase&brightness=150"
-
-# Get system status as JSON
-curl "http://k2so.local/status"
-
-# Trigger wake up (for voice assistants)
-curl "http://k2so.local/trigger/wakeup"
-```
-
-**Integration Examples:**
-
-```python
-# Python example
-import requests
-
-K2SO_IP = "192.168.1.100"
-
-# Wake up K-2SO
-requests.get(f"http://{K2SO_IP}/trigger/wakeup")
-
-# Set custom eye color
-requests.get(f"http://{K2SO_IP}/led", params={"r": 80, "g": 150, "b": 255})
-
-# Move head to look left
-requests.get(f"http://{K2SO_IP}/servo", params={"hp": 45})
-```
-
-```javascript
-// JavaScript example
-const K2SO_IP = "192.168.1.100";
-
-// Wake up K-2SO
-fetch(`http://${K2SO_IP}/trigger/wakeup`);
-
-// Set alert mode
-fetch(`http://${K2SO_IP}/mode?m=alert`);
-
-// Play random voice
-fetch(`http://${K2SO_IP}/trigger/speak`);
-```
-
-**Home Assistant Integration:**
-
-```yaml
-# configuration.yaml
-rest_command:
-  k2so_wakeup:
-    url: "http://192.168.1.100/trigger/wakeup"
-  k2so_sleep:
-    url: "http://192.168.1.100/trigger/sleep"
-  k2so_alert:
-    url: "http://192.168.1.100/trigger/alert"
-  k2so_speak:
-    url: "http://192.168.1.100/trigger/speak"
-  k2so_set_color:
-    url: "http://192.168.1.100/led?r={{ r }}&g={{ g }}&b={{ b }}"
-```
-
-**Notes:**
-- All endpoints require authentication if enabled (HTTP Basic Auth)
-- Response format is JSON for `/status`, plain text for others
-- Servo values are clamped to configured limits
-- Invalid parameters are ignored (no error response)
-
 ### 3. Serial Commands (115200 baud)
 
 #### Basic Commands:
 
-```
 help          # Show complete command reference
 status        # Display system information
 config        # Show current configuration
 save          # Save settings to EEPROM
 reset         # Restart system
-```
 
 #### WiFi Configuration (v1.2.0+):
 
-```
 wifi set "ssid" "password"  # Configure WiFi credentials (saves to EEPROM, quotes for spaces)
 wifi show                   # Display current WiFi settings and connection status
 wifi reset                  # Clear WiFi configuration (requires confirmation)
 wifi reconnect              # Reconnect to WiFi with current settings
-```
 
 **Examples:**
 ```
@@ -913,14 +752,12 @@ wifi reconnect
 
 When WiFi connection fails, K-2SO can automatically create its own WiFi access point for direct connection.
 
-```
 ap set "ssid" "password"    # Configure custom AP credentials (password min 8 chars, quotes for spaces)
 ap show                     # Display current AP settings and status
 ap reset                    # Reset to default AP settings (K2SO-XXXXXX)
 ap enable                   # Enable AP mode fallback (auto-starts when WiFi fails)
 ap disable                  # Disable AP mode fallback
 ap start                    # Start AP mode immediately
-```
 
 **Examples:**
 ```
@@ -1121,7 +958,6 @@ Repeat steps 2-5 for each command, changing only the URL and name:
 
 #### Hardware Control:
 
-```
 # Servo Control
 servo show                          # Display all servo settings
 servo eye center 90 90              # Set eye center positions
@@ -1153,53 +989,47 @@ detail off                          # Disable detail LEDs
 sound volume 25                     # Set volume (0-30)
 sound play 1                        # Play specific file
 sound folder 4 1                    # Play folder 4, track 1
-```
+
 
 #### Mode Control:
 
-```
 mode scanning           # Slow, methodical observation
-mode alert              # Fast, reactive responses
-mode idle               # Minimal movement, power saving
-```
+mode alert             # Fast, reactive responses  
+mode idle              # Minimal movement, power saving
+
 
 #### Timing Adjustment:
 
-```
 timing scan move 20 40              # Scan mode movement speed (ms)
 timing scan wait 3000 6000          # Wait between movements (ms)
 timing alert move 5 15              # Alert mode movement speed
 timing sound 8000 20000             # Sound pause intervals
-```
+
 
 #### Profile Management:
 
-```
 profile save "MyK2SO"              # Save current configuration
 profile load 0                     # Load saved profile
 profile list                       # Show all profiles
 profile delete 1                   # Delete profile
-```
+
 
 #### IR Remote Setup:
 
-```
 learn         # Program your IR remote (step-by-step)
 scan          # IR code scanner mode
-show          # Display programmed codes
+show          # Display programmed codes  
 default       # Load standard remote codes
 clear         # Clear all IR codes (requires confirmation)
 ir on/off     # Enable/disable IR receiver
-```
+
 
 #### System Tools:
 
-```
 monitor       # Live system monitoring mode
 test          # Run hardware test sequence
 backup        # Export configuration as hex
 restore       # Import configuration from hex
-```
 
 
 ## 🎭 Personality Modes
@@ -1231,23 +1061,17 @@ restore       # Import configuration from hex
 
 1. **Find Center Positions:**
 
-   ```
    servo eye center 90 90     # Start with standard center
    servo head center 90 90    # Adjust as needed for your build
-   ```
 
 2. **Set Movement Ranges:**
 
-   ```
    servo eye limits 45 135 30 150    # Pan: 45-135°, Tilt: 30-150°
    servo head limits 0 180 0 180     # Full range (adjust for clearance)
-   ```
 
 3. **Test Movement:**
 
-   ```
    servo test all             # Run complete servo test
-   ```
 
 ### LED Customization
 
@@ -1313,22 +1137,16 @@ detail off                 # Disable detail LEDs
 
 1. **Volume Configuration:**
 
-   ```
    sound volume 20           # Set volume (0-30)
-   ```
 
 2. **Test Playback:**
 
-   ```
    sound play 1             # Test file playback
    sound folder 4 1         # Play specific folder/track
-   ```
 
 3. **Sound Timing:**
 
-   ```
    timing sound 10000 30000  # 10-30 second pauses between sounds
-   ```
 
 ## 🌟 New in Version 1.1.0
 
@@ -1481,7 +1299,6 @@ Eyes can now be configured for two hardware variants:
 - System boots normally without user intervention
 
 **Manual Recovery (if needed):**
-
 ```
 # Via Serial Monitor (115200 baud)
 reset                       # Restart system (will auto-recover)
@@ -1670,18 +1487,14 @@ E (250) rmt: rmt_new_tx_channel(269): not able to power down in light sleep
 
 #### Memory Problems
 
-```
 status                    # Check free RAM
-```
 
 - If RAM < 50KB, reduce audio buffer or LED effects
 
 #### Servo Jitter
 
-```
 timing scan move 50 100   # Slow down movement speed
 servo test all            # Check mechanical binding
-```
 
 
 #### Audio Dropouts
@@ -1693,22 +1506,20 @@ servo test all            # Check mechanical binding
 
 ### Real-Time Monitoring Mode
 
-```
 monitor                   # Enter live monitoring mode
-```
+
 
 Displays:
 - Current servo positions
 - Memory usage
-- IR command activity
+- IR command activity  
 - Audio system status
 - System uptime
 
 ### Status Information
 
-```
 status                    # Show complete system status
-```
+
 
 Provides:
 - Operating mode and personality
@@ -1721,9 +1532,7 @@ Provides:
 
 Enable detailed debugging in Serial Monitor:
 
-```cpp
 #define ENABLE_SERIAL_DEBUG true    // In config.h
-```
 
 
 ## 💡 Status LED System
@@ -1780,26 +1589,22 @@ The K-2SO controller features an intelligent status LED system using a single WS
 
 ### Movement Smoothness
 
-```
 # Optimize servo timing for your build
 timing scan move 20 40        # Faster movement
 timing scan wait 2000 4000    # Shorter pauses
-```
 
-### Power Efficiency
 
-```
+### Power Efficiency  
+
 mode idle                     # Use idle mode when inactive
 led brightness 100            # Reduce LED brightness
 sound volume 15               # Lower audio volume
-```
+
 
 ### Response Time
 
-```
 timing alert move 5 10        # Very fast alert responses
 timing alert wait 200 800     # Quick reaction timing
-```
 
 
 ## 🚀 Future Expansion
@@ -1840,12 +1645,11 @@ timing alert wait 200 800     # Quick reaction timing
 
 ### Diagnostic Commands
 
-```
+
 test                     # Complete hardware test
-status                   # System health check
-config                   # Configuration verification
-show                     # IR remote status
-```
+status                  # System health check  
+config                  # Configuration verification
+show                    # IR remote status
 
 
 ## 📜 License & Credits

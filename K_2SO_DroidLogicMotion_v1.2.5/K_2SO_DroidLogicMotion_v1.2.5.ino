@@ -259,13 +259,6 @@ uint8_t currentBrightness = DEFAULT_BRIGHTNESS;
 PixelMode currentPixelMode = SOLID_COLOR;
 uint8_t activeEyeLEDCount = 13;  // Active LED count based on eye version (default 13)
 
-// Sequence recording variables (unified eye settings)
-PixelMode currentEyeMode = SOLID_COLOR;       // Alias for currentPixelMode
-uint32_t currentEyeColor = 0x007FFF;          // Ice blue default
-DetailPattern currentDetailPattern = DETAIL_PATTERN_PULSE;
-uint32_t currentDetailColor = 0x007FFF;       // Ice blue default
-uint8_t detailBrightness = DEFAULT_BRIGHTNESS;
-
 bool isAudioReady = false;
 bool isWaitingForNextTrack = false;
 unsigned long nextPlayTime = 0;
@@ -877,6 +870,9 @@ void setupWebServer() {
   server.on("/seq/list", handleSeqList);
   server.on("/seq/play", handleSeqPlay);
   server.on("/seq/stop", handleSeqStop);
+  server.on("/seq/pause", handleSeqPause);
+  server.on("/seq/resume", handleSeqResume);
+  server.on("/seq/loop", handleSeqLoop);
   server.on("/seq/delete", handleSeqDelete);
   server.on("/seq/playlist/add", handleSeqPlaylistAdd);
   server.on("/seq/playlist/clear", handleSeqPlaylistClear);

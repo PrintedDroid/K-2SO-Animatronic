@@ -54,6 +54,9 @@ void handleDetailEnabledWeb();       // Enable/disable detail LEDs via web
 void handleSeqList();                // Get list of sequences (JSON)
 void handleSeqPlay();                // Play sequence
 void handleSeqStop();                // Stop playback
+void handleSeqPause();               // Pause playback
+void handleSeqResume();              // Resume playback
+void handleSeqLoop();                // Loop single sequence
 void handleSeqDelete();              // Delete sequence
 void handleSeqPlaylistAdd();         // Add to playlist
 void handleSeqPlaylistClear();       // Clear playlist

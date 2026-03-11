@@ -12,6 +12,7 @@
 8. [Tips & Best Practices](#tips--best-practices)
 9. [Troubleshooting](#troubleshooting)
 10. [Technical Details](#technical-details)
+11. [Web API Reference](#web-api-reference-v125)
 
 ---
 
@@ -34,7 +35,8 @@ Per Frame:
 - **Available:** ~1.5-2 MB for sequences
 - **Sequences:** 20-50+ (depending on frame count)
 - **Frames per Sequence:** up to 200
-- **Per Frame:** ~14 bytes
+- **Sequence Name Length:** max 32 characters
+- **Per Frame:** ~24 bytes (RAM) / ~80 bytes (JSON on flash)
 
 ---
 
@@ -192,6 +194,12 @@ seq play "Greeting"
 # Play in loop
 seq loop "Greeting"
 ```
+
+### Pause / Resume Playback
+
+> **Note:** Pause and Resume are only available via the **Web Interface** (buttons in the Playback section). There are no serial commands for pause/resume.
+
+When paused, the playback timer freezes at the current frame position and resumes exactly where it left off.
 
 ### Stop Playback
 
@@ -477,6 +485,7 @@ seq info "MySequence"
 
 # Re-record with adjusted frame durations
 seq delete "MySequence"
+# → Type 'yes' to confirm deletion
 seq new "MySequence"
 # ... frames with better durations ...
 ```
@@ -549,9 +558,12 @@ Sequences are stored as JSON on LittleFS:
 ```
 
 **LittleFS Capacity:**
-- Small sequence (10 frames): ~2 KB → 750+ possible
-- Medium sequence (50 frames): ~8 KB → 150+ possible
-- Large sequence (200 frames): ~30 KB → 50+ possible
+- Small sequence (10 frames): ~1 KB → 1500+ possible
+- Medium sequence (50 frames): ~4 KB → 375+ possible
+- Large sequence (200 frames): ~16 KB → 90+ possible
+
+> Note: JSON overhead (keys, brackets, whitespace) adds ~80 bytes per frame on flash.
+> In RAM during playback, each frame occupies ~24 bytes (struct with alignment padding).
 
 ### Playback Engine
 
@@ -580,8 +592,11 @@ Sequences are stored as JSON on LittleFS:
 # Rename
 seq rename "OldName" "NewName"
 
-# Delete
+# Delete (requires confirmation)
 seq delete "MySequence"
+# Output:
+# ⚠️ Delete sequence "MySequence"? Type 'yes' to confirm:
+# → Type 'yes' + Enter within 30 seconds, or deletion is cancelled
 
 # Show status (currently running recording/playback)
 seq status
@@ -725,6 +740,70 @@ seq map 7 "Greeting"  # Only starts Greeting
 seq playlist loop
 # → Performance runs endlessly!
 ```
+
+---
+
+## 🌐 Web API Reference (v1.2.5)
+
+The Web Interface provides full sequence control. All endpoints require HTTP Basic Authentication (same as the main web UI).
+
+### Sequence Endpoints
+
+| Endpoint | Method | Description | Parameters |
+|----------|--------|-------------|------------|
+| `/seq/list` | GET | List all sequences | -- |
+| `/seq/play` | GET | Play a sequence once | `name` |
+| `/seq/loop` | GET | Play a sequence in loop mode | `name` |
+| `/seq/stop` | GET | Stop active playback | -- |
+| `/seq/pause` | GET | Pause active playback | -- |
+| `/seq/resume` | GET | Resume paused playback | -- |
+| `/seq/delete` | GET | Delete a sequence | `name` |
+
+### Playlist Endpoints
+
+| Endpoint | Method | Description | Parameters |
+|----------|--------|-------------|------------|
+| `/seq/playlist/add` | GET | Add sequence to playlist | `name` |
+| `/seq/playlist/clear` | GET | Clear playlist | -- |
+| `/seq/playlist/play` | GET | Play playlist once | -- |
+| `/seq/playlist/loop` | GET | Play playlist in loop | -- |
+| `/seq/playlist/get` | GET | Get current playlist (JSON) | -- |
+
+### IR Mapping Endpoints
+
+| Endpoint | Method | Description | Parameters |
+|----------|--------|-------------|------------|
+| `/seq/map/list` | GET | Get all IR mappings (JSON) | -- |
+| `/seq/map/set` | GET | Map IR button to sequence | `button`, `name` |
+| `/seq/map/clear` | GET | Clear IR button mapping | `button` |
+
+### Response Format
+
+**`/seq/list` response:**
+```json
+{
+  "sequences": [
+    {"name": "Greeting"},
+    {"name": "LookAround"}
+  ],
+  "count": 2,
+  "maxDisplayed": 20
+}
+```
+
+> When `count >= maxDisplayed`, the web UI shows a truncation warning. The list shows the first 20 sequences.
+
+### Web UI Features (v1.2.5)
+
+The web interface includes the following sequence controls:
+
+- **Playback Controls**: Pause, Resume, and Stop buttons
+- **Per-Sequence Actions**: Play (▶), Loop (🔁), Add to Playlist (+), Delete (🗑️)
+- **Playlist Management**: Add, Clear, Play, Loop controls
+- **IR Mapping**: View, assign, and clear button-to-sequence mappings
+- **Auto-refresh**: Sequence list and playlist status update automatically
+
+> **Note:** Pause/Resume is only available via the Web UI -- there are no serial commands for these actions.
 
 ---
 

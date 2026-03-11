@@ -17,7 +17,7 @@
 // Page titles and branding
 #define WEB_TITLE               "K-2SO Controller"
 #define WEB_SUBTITLE            "Professional Droid Interface"
-#define WEB_VERSION             "v1.1.0"
+#define WEB_VERSION             "v1.2.5"
 
 // Default values for dynamic content
 #define DEFAULT_WEB_BRIGHTNESS  150
@@ -58,13 +58,11 @@ enum WebPageSection {
 
 // Main page generation
 String getIndexPage();                                 // Get complete HTML page
-String getIndexPageWithStatus();                       // Get page with current status
 
 // Page section generators
 String getPageHeader();                                // Get HTML head section
 String getPageCSS();                                   // Get CSS styles
 String getPageJavaScript();                            // Get JavaScript code
-String getPageFooter();                                // Get HTML footer
 
 // Control section generators
 String getServoControlSection();                       // Get servo gamepad HTML
@@ -77,70 +75,11 @@ String getSequenceControlSection();                    // Get sequence managemen
 
 // Dynamic content generators
 String getCurrentStatusJSON();                         // Get status as JSON
-String getServoPositionsJSON();                        // Get servo positions as JSON
-String getSystemInfoJSON();                            // Get system info as JSON
-
-// Specialized control generators
-String getServoGamepad();                              // Generate servo gamepad
-String getColorPicker();                               // Generate color picker
-String getBrightnessSlider();                          // Generate brightness slider
-String getVolumeSlider();                              // Generate volume slider
-String getModeSelector();                              // Generate mode selector
 
 // Utility functions for web content
 String formatUptime(unsigned long seconds);            // Format uptime display
 String formatMemory(size_t bytes);                     // Format memory display
 String escapeHTML(String input);                       // Escape HTML characters
-String getBatteryStatus();                             // Get battery status (if available)
-
-// Mobile optimization functions
-String getMobileCSS();                                 // Get mobile-specific CSS
-String getTouchControls();                             // Get touch-optimized controls
-String getResponsiveLayout();                          // Get responsive layout code
-
-// Theme and styling functions
-String getK2SOTheme();                                 // Get K-2SO themed styles
-String getDarkMode();                                  // Get dark mode CSS
-String getLightMode();                                 // Get light mode CSS
-String getAnimatedElements();                          // Get CSS animations
-
-//========================================
-// AJAX ENDPOINT HELPERS
-//========================================
-
-// Functions to support AJAX endpoints
-String handleStatusRequest();                          // Handle /status AJAX request
-String handleServoRequest(String params);              // Handle servo AJAX requests
-String handleLEDRequest(String params);                // Handle LED AJAX requests
-String handleAudioRequest(String params);              // Handle audio AJAX requests
-
-//========================================
-// ERROR PAGE FUNCTIONS
-//========================================
-
-String get404Page();                                   // Get 404 error page
-String get500Page();                                   // Get 500 error page
-String getOfflinePage();                               // Get offline status page
-String getMaintenancePage();                           // Get maintenance page
-
-//========================================
-// CONFIGURATION WEB INTERFACE
-//========================================
-
-String getConfigPage();                                // Get configuration page
-String getServoCalibrationPage();                      // Get servo calibration page
-String getIRLearningPage();                            // Get IR learning interface
-String getProfileManagementPage();                     // Get profile management page
-String getDiagnosticsPage();                           // Get diagnostics page
-
-//========================================
-// ADVANCED FEATURES
-//========================================
-
-String getWebSocketScript();                           // Get WebSocket JavaScript
-String getProgressiveWebApp();                         // Get PWA manifest
-String getServiceWorker();                             // Get service worker code
-String getInstallPrompt();                             // Get PWA install prompt
 
 //========================================
 // CONSTANTS FOR HTML ELEMENTS

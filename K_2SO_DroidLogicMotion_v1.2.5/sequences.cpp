@@ -1,6 +1,7 @@
 #include "sequences.h"
 #include "globals.h"
-#include "animations.h"   // For PixelMode enum
+#include "animations.h"   // For PixelMode enum, setEyeColor, setEyeBrightness
+#include "detailleds.h"   // For detailState, setDetailColor, setDetailBrightness, setDetailPattern
 #include <ArduinoJson.h>
 #include <ESP32Servo.h>   // For Servo class methods
 
@@ -218,20 +219,20 @@ void SequenceManager::captureCurrentState(SequenceFrame& frame) {
   frame.headPan = headPan.currentPosition;
   frame.headTilt = headTilt.currentPosition;
 
-  // Capture eye animation settings
-  frame.eyeMode = static_cast<uint8_t>(currentEyeMode);
-  frame.eyeColor = currentEyeColor;
-  frame.eyeBrightness = config.eyeBrightness;
+  // Capture eye animation settings from actual system state
+  frame.eyeMode = static_cast<uint8_t>(currentPixelMode);
+  frame.eyeColor = leftEyeCurrentColor;
+  frame.eyeBrightness = currentBrightness;
 
-  // Capture detail LED settings
-  frame.detailMode = static_cast<uint8_t>(currentDetailPattern);
-  frame.detailColor = currentDetailColor;
-  frame.detailBrightness = detailBrightness;
+  // Capture detail LED settings from actual detailState
+  frame.detailMode = static_cast<uint8_t>(detailState.pattern);
+  frame.detailColor = ((uint32_t)detailState.red << 16) | ((uint32_t)detailState.green << 8) | detailState.blue;
+  frame.detailBrightness = detailState.brightness;
 
   // Capture audio settings (no active sound trigger)
   frame.soundFile = 0;
   frame.soundFolder = 0;
-  frame.volume = currentVolume;
+  frame.volume = config.savedVolume;
 }
 
 bool SequenceManager::saveRecording() {
@@ -343,6 +344,37 @@ bool SequenceManager::playSequence(const char* name, bool loop) {
     Serial.println();
   }
 
+  // Apply first frame immediately (LEDs, details, sound, servos)
+  if (frameCount > 0) {
+    SequenceFrame& first = frames[0];
+    eyePan.targetPosition = first.eyePan;
+    eyePan.isMoving = true;
+    eyeTilt.targetPosition = first.eyeTilt;
+    eyeTilt.isMoving = true;
+    headPan.targetPosition = first.headPan;
+    headPan.isMoving = true;
+    headTilt.targetPosition = first.headTilt;
+    headTilt.isMoving = true;
+
+    if (first.eyeMode < 14) {
+      currentPixelMode = static_cast<PixelMode>(first.eyeMode);
+      setEyeColor(first.eyeColor, first.eyeColor);
+      setEyeBrightness(first.eyeBrightness);
+    }
+    if (first.detailMode < 5) {
+      setDetailPattern(static_cast<DetailPattern>(first.detailMode));
+      setDetailColor((first.detailColor >> 16) & 0xFF,
+                     (first.detailColor >> 8) & 0xFF,
+                     first.detailColor & 0xFF);
+      setDetailBrightness(first.detailBrightness);
+    }
+    if (first.soundFile > 0) {
+      mp3.playFolderTrack(first.soundFolder, first.soundFile);
+      if (first.volume > 0) mp3.setVolume(first.volume);
+      playback.soundTriggered = true;
+    }
+  }
+
   return true;
 }
 
@@ -366,11 +398,13 @@ void SequenceManager::updatePlayback() {
   // Check if current frame duration has elapsed
   SequenceFrame& currentFrame = playback.frames[playback.currentFrameIndex];
   unsigned long elapsed = millis() - playback.frameStartTime;
+  bool newFrame = false;
 
   if (elapsed >= currentFrame.duration) {
     // Move to next frame
     playback.currentFrameIndex++;
     playback.soundTriggered = false;  // Reset sound trigger for new frame
+    newFrame = true;
 
     // Check if sequence is complete
     if (playback.currentFrameIndex >= playback.totalFrames) {
@@ -430,11 +464,10 @@ void SequenceManager::updatePlayback() {
     }
   }
 
-  // Apply current frame settings
+  // Get current frame
   SequenceFrame& frame = playback.frames[playback.currentFrameIndex];
 
-  // Apply servo positions - use smooth interpolation via ServoState system
-  // Only update target if position changed to avoid unnecessary movement resets
+  // Servo targets are set every loop for smooth interpolated movement
   if (eyePan.targetPosition != frame.eyePan) {
     eyePan.targetPosition = frame.eyePan;
     eyePan.isMoving = true;
@@ -451,31 +484,36 @@ void SequenceManager::updatePlayback() {
     headTilt.targetPosition = frame.headTilt;
     headTilt.isMoving = true;
   }
-  // Note: Actual servo movement is handled by updateServo() in main loop
-  // This provides smooth interpolated movement instead of instant jumps
 
-  // Apply eye animation
+  // LED, detail, and sound only applied on frame transitions (not every loop)
+  // This avoids fighting with the animation system and wasting CPU on .show() calls
+  if (!newFrame) {
+    return;
+  }
+
+  // Apply eye animation via actual system functions
   if (frame.eyeMode < 14) {
-    currentEyeMode = static_cast<PixelMode>(frame.eyeMode);
-    currentEyeColor = frame.eyeColor;
-    config.eyeBrightness = frame.eyeBrightness;
+    currentPixelMode = static_cast<PixelMode>(frame.eyeMode);
+    setEyeColor(frame.eyeColor, frame.eyeColor);
+    setEyeBrightness(frame.eyeBrightness);
   }
 
-  // Apply detail LED
+  // Apply detail LED via actual system functions
   if (frame.detailMode < 5) {
-    currentDetailPattern = static_cast<DetailPattern>(frame.detailMode);
-    currentDetailColor = frame.detailColor;
-    detailBrightness = frame.detailBrightness;
+    setDetailPattern(static_cast<DetailPattern>(frame.detailMode));
+    setDetailColor((frame.detailColor >> 16) & 0xFF,
+                   (frame.detailColor >> 8) & 0xFF,
+                   frame.detailColor & 0xFF);
+    setDetailBrightness(frame.detailBrightness);
   }
 
-  // Trigger sound if specified - only once per frame using flag
+  // Trigger sound if specified
   if (frame.soundFile > 0 && !playback.soundTriggered) {
     mp3.playFolderTrack(frame.soundFolder, frame.soundFile);
     if (frame.volume > 0) {
       mp3.setVolume(frame.volume);
-      currentVolume = frame.volume;
     }
-    playback.soundTriggered = true;  // Prevent re-triggering
+    playback.soundTriggered = true;
   }
 }
 

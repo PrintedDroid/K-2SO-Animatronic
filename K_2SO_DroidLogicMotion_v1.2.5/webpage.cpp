@@ -838,6 +838,16 @@ String getSequenceControlSection() {
             <div class="empty-message">Loading sequences...</div>
         </div>
 
+        <!-- Playback Controls -->
+        <div class="section-subsection">
+            <div class="subsection-title">Playback</div>
+            <div class="playlist-controls">
+                <button class="btn-control" onclick="sequencePause()">⏸️ Pause</button>
+                <button class="btn-control" onclick="sequenceResume()">▶ Resume</button>
+                <button class="btn-control" onclick="sequenceStop()">⏹️ Stop</button>
+            </div>
+        </div>
+
         <!-- Playlist Management -->
         <div class="section-subsection">
             <div class="subsection-title">Playlist</div>
@@ -849,7 +859,6 @@ String getSequenceControlSection() {
                     <button class="btn-control" onclick="playlistPlay()">▶ Play</button>
                     <button class="btn-control" onclick="playlistLoop()">🔁 Loop</button>
                     <button class="btn-control" onclick="playlistClear()">🗑️ Clear</button>
-                    <button class="btn-control" onclick="sequenceStop()">⏹️ Stop</button>
                 </div>
             </div>
         </div>
@@ -1327,12 +1336,17 @@ String getPageJavaScript() {
                         <div class="sequence-name">${escapeHtml(seq.name)}</div>
                         <div class="sequence-actions">
                             <button class="btn-small btn-play" onclick="sequencePlay('${escapeHtml(seq.name)}')">▶</button>
+                            <button class="btn-small btn-loop" onclick="sequenceLoop('${escapeHtml(seq.name)}')">🔁</button>
                             <button class="btn-small btn-add" onclick="playlistAdd('${escapeHtml(seq.name)}')">+</button>
                             <button class="btn-small btn-delete" onclick="sequenceDelete('${escapeHtml(seq.name)}')">🗑️</button>
                         </div>
                     </div>
                 `;
             });
+
+            if (data.count >= data.maxDisplayed) {
+                html += '<div class="empty-message" style="color:#ff9f43;">Showing first ' + data.maxDisplayed + ' sequences only</div>';
+            }
 
             listDiv.innerHTML = html;
 
@@ -1363,6 +1377,43 @@ String getPageJavaScript() {
             if (!response.ok) throw new Error('Failed to stop playback');
 
             showFeedback('Playback stopped', 'success');
+            setTimeout(loadPlaylistStatus, 500);
+        } catch (error) {
+            showFeedback('Error: ' + error.message, 'error');
+        }
+    }
+
+    // Pause playback
+    async function sequencePause() {
+        try {
+            const response = await fetch('/seq/pause');
+            if (!response.ok) throw new Error('Failed to pause playback');
+
+            showFeedback('Playback paused', 'success');
+        } catch (error) {
+            showFeedback('Error: ' + error.message, 'error');
+        }
+    }
+
+    // Resume playback
+    async function sequenceResume() {
+        try {
+            const response = await fetch('/seq/resume');
+            if (!response.ok) throw new Error('Failed to resume playback');
+
+            showFeedback('Playback resumed', 'success');
+        } catch (error) {
+            showFeedback('Error: ' + error.message, 'error');
+        }
+    }
+
+    // Loop a single sequence
+    async function sequenceLoop(name) {
+        try {
+            const response = await fetch(`/seq/loop?name=${encodeURIComponent(name)}`);
+            if (!response.ok) throw new Error('Failed to loop sequence');
+
+            showFeedback(`Looping: ${name}`, 'success');
             setTimeout(loadPlaylistStatus, 500);
         } catch (error) {
             showFeedback('Error: ' + error.message, 'error');

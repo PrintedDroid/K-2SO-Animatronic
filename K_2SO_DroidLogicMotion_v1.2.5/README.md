@@ -2,11 +2,11 @@
 
 > **⚠️ BETA VERSION - TESTING IN PROGRESS**
 >
-> Diese Firmware befindet sich noch in der Testphase. Das Performance Recording System (Sequence Recording) wurde mit Bugfixes aktualisiert, ist aber noch nicht ausgiebig im Produktionseinsatz getestet worden.
+> This firmware is still in the testing phase. The Performance Recording System (Sequence Recording) has been updated with bugfixes, but has not yet been extensively tested in production use.
 >
-> **Für stabilen Produktionseinsatz wird Version 1.2.3 empfohlen.**
+> **For stable production use, version 1.2.3 is recommended.**
 >
-> Feedback und Bug-Reports sind willkommen!
+> Feedback and bug reports are welcome!
 
 **Advanced ESP32-S3 based animatronics controller for Star Wars K-2SO droid builds**
 
@@ -160,6 +160,54 @@ This update fixes critical bugs, security vulnerabilities, and improves overall 
 - All web handlers: Input validation with proper error responses
 - Improved playback initialization with proper state reset
 
+#### 🐛 Additional Bugfixes (Post-Review)
+
+**17. Sequence Recording State Synchronization**
+- `captureCurrentState()` was reading stale alias variables instead of actual system state
+- Now reads `currentPixelMode`, `leftEyeCurrentColor`, `currentBrightness` for eye state
+- Now reads `detailState.pattern/red/green/blue/brightness` for detail LED state
+- Ensures recorded sequences accurately capture the current droid state
+
+**18. Sequence Playback Hardware Control**
+- `updatePlayback()` was writing to dead variables instead of controlling actual hardware
+- Now calls `setEyeColor()`, `setEyeBrightness()`, `setDetailPattern()`, `setDetailColor()`, `setDetailBrightness()`
+- Eye and detail LED animations now actually change during sequence playback
+
+**19. Playback Performance Optimization**
+- LED/detail/sound commands were being sent every loop iteration (~10ms)
+- Restructured `updatePlayback()`: servos update every loop, LED/detail/sound only on frame transitions
+- First frame now applied immediately in `playSequence()` to avoid startup delay
+
+**20. Web JSON/JavaScript Mismatch**
+- `handleSeqList()` returned plain strings but JavaScript expected `{name: "..."}` objects
+- `handleSeqPlaylistGet()` used wrong JSON keys (`playlist`/`current` instead of `sequences`/`count`/`currentIndex`)
+- Both handlers now produce JSON matching the web interface expectations
+
+**21. JSON Injection Prevention**
+- Sequence/button names were injected into JSON responses without escaping
+- Added `escapeJsonString()` helper for proper escaping of `"`, `\`, newlines, tabs
+- Applied to all JSON-building handlers (`handleSeqList`, `handleSeqMapList`, etc.)
+
+**22. Volume State Synchronization**
+- `setVolume()` did not update `currentVolume` tracking variable
+- Added `currentVolume = volume;` sync after hardware volume change
+
+**23. Uninitialized sequenceName in Default Config**
+- `loadDefaultCodes()` did not initialize `sequenceName[32]` field in IRButton struct
+- Added `config.buttons[i].sequenceName[0] = '\0';` null termination
+
+**24. Stack Memory Reduction**
+- Reduced `char names[50][32]` (1600 bytes) to `char names[20][32]` (640 bytes) in sequence listing
+- ESP32 stack is limited; 960 bytes saved per call in two handlers
+
+**25. Removed Unused Global Variables**
+- Removed 5 stale alias globals from `globals.h` and `.ino`: `currentEyeMode`, `currentEyeColor`, `currentDetailPattern`, `currentDetailColor`, `detailBrightness`
+- These were never synced with actual hardware state and caused bugs #17/#18
+
+**26. PlatformIO ArduinoJson Version Corrected**
+- `platformio.ini` referenced ArduinoJson `^7.2.1` but code uses v6 API (`DynamicJsonDocument`)
+- Changed to `^6.21.5` to match actual code requirements
+
 #### ⚠️ When These Fixes Apply
 
 You'll benefit from this version if you've experienced:
@@ -172,6 +220,14 @@ You'll benefit from this version if you've experienced:
 - ✅ Boot animation errors with 7-LED eyes
 - ✅ Servo limits incorrectly set (min >= max)
 - ✅ Profile overwriting when all slots full
+- ✅ Recorded sequences not capturing eye/detail LED state correctly
+- ✅ Sequence playback not changing eye or detail LED animations
+- ✅ Web sequence list or playlist not loading in the browser
+- ✅ PlatformIO build failing with ArduinoJson API errors
+
+#### ⚠️ Upgrade Notice: v1.2.3 → v1.2.5
+
+> **EEPROM Reset Expected:** The `IRButton` struct grew by 32 bytes per button (new `sequenceName[32]` field added in v1.2.4). When upgrading from v1.2.3, the EEPROM checksum will detect the layout change and automatically reload factory defaults. This means **all IR codes, WiFi credentials, servo settings, and profiles will be reset**. Back up your configuration first using `backup` in Serial Monitor, and re-enter your settings after flashing.
 
 ---
 
@@ -234,7 +290,7 @@ This major update introduces a complete performance recording and playback syste
 
 #### 🔧 Modified Files
 - `config.h` - Extended IRButton struct with sequenceName field
-- `globals.h` - Added sequence recording state variables
+- `globals.h` - Sequence system externs (stale alias variables removed in v1.2.5)
 - `handlers.cpp` - 12 new web endpoints, serial command handlers
 - `handlers.h` - Function declarations for web handlers
 - `webpage.cpp` - Sequence management UI section (+716 lines)
@@ -333,7 +389,7 @@ This update fixes critical bugs in configuration management, boot sequence, and 
   - **Impact**: Uninitialized padding bytes caused random checksum values on every boot
   - **Symptoms**: WiFi settings appeared to save but were lost after reboot
   - **Evidence**: Boot logs showed mismatched checksums (e.g., `0xFFFF351C` vs `0x00032FDC`)
-  - **Intermittent Nature**: "teilweise nicht bei jedem reset sichtbar" - padding bytes had random values
+  - **Intermittent Nature**: Padding bytes had random values - not visible on every reset
 - **Solution**: Added `__attribute__((packed))` to all EEPROM structures
   - `struct __attribute__((packed)) IRButton { ... };`
   - `struct __attribute__((packed)) Profile { ... };`
@@ -745,7 +801,8 @@ Required Libraries:
 ├── Adafruit NeoPixel (1.15.1+)
 ├── ESP32Servo (3.0.8+)
 ├── DFPlayer Mini Mp3 by Makuna (1.2.3+)
-└── IRremote (4.4.2+)
+├── IRremote (4.4.2+)
+└── ArduinoJson (6.21.5+)          ⚠️ Must be version 6.x (NOT 7.x)
 
 Built-in (no installation needed):
 ├── WiFi
@@ -768,6 +825,7 @@ K_2SO_DroidLogicMotion_v1.2.5/
 ├── webpage.cpp/.h                       # Web interface with sequence management
 ├── Mp3Notify.cpp/.h                     # Audio system callbacks
 ├── README.md                            # This file
+├── DEVELOPMENT_NOTES.md                 # Architecture decisions & dev notes
 ├── SEQUENCE_RECORDING_GUIDE.md          # Complete recording tutorial (NEW v1.2.4)
 └── platformio.ini                       # PlatformIO configuration
 
@@ -1891,6 +1949,8 @@ timing alert wait 200 800     # Quick reaction timing
 - **Additional Expansion**: Custom sensor integration
 
 ### Planned Features
+- Web-based servo calibration page (see [DEVELOPMENT_NOTES.md](DEVELOPMENT_NOTES.md))
+- WebSocket support for real-time servo control
 - PIR motion detection
 - Proximity sensors
 - Environmental sensors

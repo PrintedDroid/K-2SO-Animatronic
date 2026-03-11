@@ -75,6 +75,25 @@ bool safeParseInt(const String& str, int& value, int minVal = INT_MIN, int maxVa
 }
 
 //========================================
+// JSON STRING ESCAPE HELPER
+//========================================
+String escapeJsonString(const char* input) {
+  String output;
+  output.reserve(strlen(input) + 4);  // Usually no escaping needed
+  for (const char* p = input; *p; p++) {
+    switch (*p) {
+      case '"':  output += "\\\""; break;
+      case '\\': output += "\\\\"; break;
+      case '\n': output += "\\n"; break;
+      case '\r': output += "\\r"; break;
+      case '\t': output += "\\t"; break;
+      default:   output += *p; break;
+    }
+  }
+  return output;
+}
+
+//========================================
 // IR SYSTEM MANAGEMENT FUNCTIONS
 //========================================
 
@@ -757,8 +776,9 @@ void setVolume(uint8_t volume) {
     Serial.printf("Invalid volume level: %d\n", volume);
     return;
   }
-  
+
   config.savedVolume = volume;
+  currentVolume = volume;  // Keep sequence recording state in sync
   if (isAudioReady) {
     mp3.setVolume(volume);
     Serial.printf("Volume set to %d\n", volume);
@@ -2519,6 +2539,7 @@ void loadDefaultCodes() {
     config.buttons[i].name[sizeof(config.buttons[i].name) - 1] = '\0';  // Ensure null termination
     config.buttons[i].code = defaultCodes[i];
     config.buttons[i].isConfigured = true;
+    config.buttons[i].sequenceName[0] = '\0';  // No sequence mapping by default
   }
   
   smartSaveToEEPROM();
@@ -4363,8 +4384,8 @@ void handleSequenceCommand(String params) {
   // ========== MANAGEMENT COMMANDS ==========
 
   if (subCmd == "list") {
-    char names[50][MAX_SEQUENCE_NAME_LENGTH];
-    int count = sequenceManager.listSequences(names, 50);
+    char names[20][MAX_SEQUENCE_NAME_LENGTH];
+    int count = sequenceManager.listSequences(names, 20);
 
     if (count == 0) {
       Serial.println(F("📂 No sequences found"));
@@ -4397,6 +4418,23 @@ void handleSequenceCommand(String params) {
   if (subCmd == "delete") {
     if (subParams.length() == 0) {
       Serial.println(F("❌ Usage: seq delete <name>"));
+      return;
+    }
+    Serial.print(F("⚠️ Delete sequence \""));
+    Serial.print(subParams);
+    Serial.println(F("\"? Type 'yes' to confirm:"));
+    unsigned long confirmStart = millis();
+    while (!Serial.available()) {
+      if (millis() - confirmStart > 30000) {
+        Serial.println(F("⏳ Timeout - delete cancelled"));
+        return;
+      }
+      delay(10);
+    }
+    String confirm = Serial.readStringUntil('\n');
+    confirm.trim();
+    if (confirm != "yes") {
+      Serial.println(F("❌ Delete cancelled"));
       return;
     }
     sequenceManager.deleteSequence(subParams.c_str());
@@ -4596,18 +4634,23 @@ void handleSequenceCommand(String params) {
 void handleSeqList() {
   if (!checkWebAuth()) return;
 
-  char names[50][MAX_SEQUENCE_NAME_LENGTH];
-  int count = sequenceManager.listSequences(names, 50);
+  const int MAX_LIST = 20;
+  char names[MAX_LIST][MAX_SEQUENCE_NAME_LENGTH];
+  int count = sequenceManager.listSequences(names, MAX_LIST);
 
-  // Build JSON response
+  // Build JSON response - JS expects objects with .name property
   String json = "{\"sequences\":[";
   for (int i = 0; i < count; i++) {
     if (i > 0) json += ",";
-    json += "\"";
-    json += names[i];
-    json += "\"";
+    json += "{\"name\":\"";
+    json += escapeJsonString(names[i]);
+    json += "\"}";
   }
-  json += "]}";
+  json += "],\"count\":";
+  json += String(count);
+  json += ",\"maxDisplayed\":";
+  json += String(MAX_LIST);
+  json += "}";
 
   server.send(200, "application/json", json);
 }
@@ -4629,6 +4672,32 @@ void handleSeqStop() {
 
   sequenceManager.stopPlayback();
   server.send(200, "text/plain", "OK");
+}
+
+void handleSeqPause() {
+  if (!checkWebAuth()) return;
+
+  bool success = sequenceManager.pausePlayback();
+  server.send(200, "text/plain", success ? "OK" : "ERROR");
+}
+
+void handleSeqResume() {
+  if (!checkWebAuth()) return;
+
+  bool success = sequenceManager.resumePlayback();
+  server.send(200, "text/plain", success ? "OK" : "ERROR");
+}
+
+void handleSeqLoop() {
+  if (!checkWebAuth()) return;
+
+  if (server.hasArg("name")) {
+    String name = server.arg("name");
+    bool success = sequenceManager.playSequence(name.c_str(), true);
+    server.send(200, "text/plain", success ? "OK" : "ERROR");
+  } else {
+    server.send(400, "text/plain", "Missing name parameter");
+  }
 }
 
 void handleSeqDelete() {
@@ -4679,21 +4748,23 @@ void handleSeqPlaylistLoop() {
 void handleSeqPlaylistGet() {
   if (!checkWebAuth()) return;
 
-  // Build JSON response with current playlist
-  String json = "{\"playlist\":[";
+  // Build JSON response - keys must match JS: sequences, count, currentIndex, active
   uint8_t count = sequenceManager.playlistGetCount();
+  String json = "{\"sequences\":[";
 
   for (uint8_t i = 0; i < count; i++) {
     if (i > 0) json += ",";
     json += "\"";
-    json += sequenceManager.playlistGetName(i);
+    json += escapeJsonString(sequenceManager.playlistGetName(i));
     json += "\"";
   }
 
-  json += "],\"active\":";
-  json += sequenceManager.playlistIsActive() ? "true" : "false";
-  json += ",\"current\":";
+  json += "],\"count\":";
+  json += String(count);
+  json += ",\"currentIndex\":";
   json += String(sequenceManager.playlistGetCurrentIndex());
+  json += ",\"active\":";
+  json += sequenceManager.playlistIsActive() ? "true" : "false";
   json += "}";
 
   server.send(200, "application/json", json);
@@ -4712,9 +4783,9 @@ void handleSeqMapList() {
       first = false;
 
       json += "{\"button\":\"";
-      json += config.buttons[i].name;
+      json += escapeJsonString(config.buttons[i].name);
       json += "\",\"sequence\":\"";
-      json += config.buttons[i].sequenceName;
+      json += escapeJsonString(config.buttons[i].sequenceName);
       json += "\"}";
     }
   }

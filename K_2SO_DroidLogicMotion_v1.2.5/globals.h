@@ -91,13 +91,6 @@ extern uint8_t currentBrightness;
 extern PixelMode currentPixelMode;
 extern uint8_t activeEyeLEDCount;  // Active LED count based on eye version
 
-// Sequence recording variables (unified eye settings)
-extern PixelMode currentEyeMode;       // Alias for currentPixelMode (used by sequences)
-extern uint32_t currentEyeColor;       // Unified eye color (used by sequences)
-extern DetailPattern currentDetailPattern;  // Current detail LED pattern
-extern uint32_t currentDetailColor;    // Current detail LED color
-extern uint8_t detailBrightness;       // Current detail LED brightness
-
 //========================================
 // STATUS LED VARIABLES (NEW)
 //========================================

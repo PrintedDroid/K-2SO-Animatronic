@@ -3,18 +3,20 @@
 PROJECT:      K-2SO Professional Animatronics Controller
 VERSION:      1.3.0
 AUTHOR:       Printed-Droid.com
-DATE:         2025-11-02
+DATE:         2026-04-25
 DESCRIPTION:  Advanced ESP32-S3 based control system for Star Wars K-2SO droid builds
               with film-accurate behaviors and professional-grade features
 
 HARDWARE:     ESP32-S3-Zero + DFPlayer Mini + PAM8406 Amplifier
 COMPATIBILITY: Works on ANY ESP32-S3 board - no PWM boards needed!
 BOARD:        ESP32S3 Dev Module (select in Arduino IDE)
+PARTITION:    No OTA (2MB APP / 2MB SPIFFS) recommended for v1.3.0
 BAUD RATE:    115200
 
 **Important Upload Notes:**
 Always enable "USB CDC On Boot" - without this, serial communication will fail
 If upload fails, try holding BOOT button while connecting USB
+If flash usage looks too high, verify "Partition Scheme -> No OTA" is selected
 
 ================================================================================
 CORE FEATURES:

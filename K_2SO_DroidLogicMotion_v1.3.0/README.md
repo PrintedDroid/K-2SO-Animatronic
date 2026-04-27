@@ -5,7 +5,7 @@ playlist chaining, IR-button to sequence mapping. Adds automatic EEPROM migratio
 upgrading from v1.2.3 / v1.2.4 keeps all existing settings (WiFi, IR mappings,
 servo calibration, profiles).
 
-**Status:** compile-clean (~94% flash, ~16% RAM), hardware verification pending.
+**Status:** compile-clean (~96% flash, ~16% RAM), hardware verification pending.
 For pure stability use **v1.2.4**. Once this version is hardware-verified it will be
 released as the new stable.
 
@@ -28,10 +28,19 @@ v2 layout, and writes the result back. Serial log shows
 ### Follow-up additions
 - **Crash-safe sequence save:** `seq save` writes to `<name>.tmp`, protects the existing target as `<name>.bak`, promotes only on success.
 - **Dual-format serial restore:** `restore` accepts both v1 (legacy) and v2 hex backups directly.
-- **New CLI commands:** `seq verify`, `seq export`, `seq import`, `seq playlist remove <n>`, `seq playlist move <from> <to>`.
-- **New HTTP endpoints:** `/seq/verify`, `/seq/export`, `/seq/import`, `/seq/playlist/remove`, `/seq/playlist/move`.
 - **JSON `{ok, message}` envelope** on sequence/IR endpoints (replaces the old mixed text/plain `OK` / `ERROR` responses).
 - **WebUI** consumes the new envelope and adds a sequence-import button.
+
+### Sequence utilities and saved playlists
+- `seq verify "name"` -- check JSON integrity of a single sequence.
+- `seq verify all` -- bulk verify before a show or deployment.
+- `seq export "name"` / `seq import` -- dump and re-load sequence JSON via serial.
+- `seq duplicate "old" "new"` -- quick variants without re-recording.
+- `seq stats` -- LittleFS, sequence, and playlist overview.
+- `seq playlist save "name"` / `seq playlist load "name"` / `seq playlist list` -- persistent named playlists in LittleFS.
+- `seq playlist remove <n>` / `seq playlist move <from> <to>` -- reorder the active playlist.
+- Matching HTTP endpoints under `/seq/` and `/seq/playlist/`.
+- WebUI buttons for *Verify All*, *Stats*, per-sequence Copy / Export / Verify, playlist Save / Load / Move / Remove, IR-mapping re-assign.
 
 ## Documentation
 

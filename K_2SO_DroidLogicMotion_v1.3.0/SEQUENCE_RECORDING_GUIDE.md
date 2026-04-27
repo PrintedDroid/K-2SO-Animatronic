@@ -31,10 +31,16 @@ seq playlist clear
 seq playlist play / loop
 seq playlist remove <n>           NEW v1.3.0
 seq playlist move <from> <to>     NEW v1.3.0
+seq playlist save "name"          NEW v1.3.0 -- persist named playlist
+seq playlist load "name"          NEW v1.3.0 -- restore named playlist
+seq playlist list                 NEW v1.3.0 -- list saved playlists
 
 seq verify "name"       NEW v1.3.0 -- check JSON integrity
+seq verify all          NEW v1.3.0 -- bulk verify before a show
 seq export "name"       NEW v1.3.0 -- print sequence JSON to serial
 seq import              NEW v1.3.0 -- paste sequence JSON to import
+seq duplicate "old" "new"   NEW v1.3.0 -- copy a sequence to a new name
+seq stats               NEW v1.3.0 -- LittleFS / sequences / playlists overview
 
 seq map <button> "name"       Map IR button to sequence
 seq map <button> clear

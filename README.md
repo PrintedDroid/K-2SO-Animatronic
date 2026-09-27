@@ -1,5 +1,10 @@
 # K-2SO Animatronic Controller README
 
+<!-- webflash-notice -->
+> **Notice:** Future versions of this firmware are released as ready-to-flash web installer in the [Printed Droid Firmware Flasher](https://www.printed-droid.com/firmware-flasher/). The documentation (commands, usage, settings) will continue to be updated here and in the wiki; the source code in this repository remains available in its current state but will no longer be updated.
+>
+> **Why:** Printed Droid has shared its source code openly for years. In the meantime, more and more projects in the community build on openly shared work but release their own results as closed source only. Open source works in both directions – this one-way street is not something we will keep supplying.
+
 **Advanced ESP32-S3 based animatronics controller for Star Wars K-2SO droid builds**
 
 Developed by [Printed-Droid.com](https://www.printed-droid.com).
